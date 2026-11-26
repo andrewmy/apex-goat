@@ -19,6 +19,8 @@ import { PebbleParticles } from './vfx/PebbleParticles';
 import { GhostRecorder } from './ghosts/GhostRecorder';
 import { GhostHerd } from './ghosts/GhostHerd';
 import { Hud, formatTime } from './ui/Hud';
+import { CourseMap } from './ui/CourseMap';
+import { HorizonCompass } from './ui/HorizonCompass';
 import { BuildBadge } from './ui/BuildBadge';
 import { ComboTracker } from './scoring/ComboTracker';
 import { trackEvent, trackEventOnce } from './analytics';
@@ -90,6 +92,8 @@ class ApexGoatGame {
   private readonly recorder: GhostRecorder;
   private readonly herd: GhostHerd;
   private readonly hud: Hud;
+  private readonly courseMap: CourseMap;
+  private readonly horizonCompass: HorizonCompass;
   private readonly combo: ComboTracker;
   public readonly buildBadge: BuildBadge;
 
@@ -157,6 +161,8 @@ class ApexGoatGame {
     this.recorder = new GhostRecorder();
     this.herd = new GhostHerd(this.scene, this.course, { isMobile: this.isMobileProfile });
     this.hud = new Hud();
+    this.courseMap = new CourseMap(this.course, this.isMobileProfile);
+    this.horizonCompass = new HorizonCompass();
     this.combo = new ComboTracker();
     this.buildBadge = new BuildBadge();
 
@@ -254,6 +260,11 @@ class ApexGoatGame {
     this.hud.showMicroToast(muted ? '🔇 AUDIO MUTED' : '🔊 AUDIO ON');
   }
 
+  private toggleCourseMap(): void {
+    const visible = this.courseMap.toggle();
+    this.hud.showMicroToast(visible ? '🗺 MAP ON' : '🗺 MAP HIDDEN');
+  }
+
   private beginGame(): void {
     if (this.started) return;
     this.started = true;
@@ -283,6 +294,8 @@ class ApexGoatGame {
     const pauseCamBtn = document.getElementById('pause-cam-btn')!;
     const pauseAudioBtn = document.getElementById('pause-audio-btn');
     const scenePillBtn = document.getElementById('scene-pill');
+    const mapTogglePillBtn = document.getElementById('map-toggle-pill');
+    const courseMapCloseBtn = document.getElementById('course-map-close');
     const muteIndicatorBtn = document.getElementById('mute-indicator');
     const helpToggleChip = document.getElementById('help-toggle-chip');
     const controlsHintClose = document.getElementById('controls-hint-close');
@@ -318,6 +331,15 @@ class ApexGoatGame {
     scenePillBtn?.addEventListener('click', () => {
       this.cycleScenePreset();
       scenePillBtn.blur();
+    });
+    mapTogglePillBtn?.addEventListener('click', () => {
+      this.toggleCourseMap();
+      mapTogglePillBtn.blur();
+    });
+    courseMapCloseBtn?.addEventListener('click', () => {
+      this.courseMap.setVisible(false);
+      this.hud.showMicroToast('🗺 MAP HIDDEN');
+      courseMapCloseBtn.blur();
     });
     muteIndicatorBtn?.addEventListener('click', () => {
       this.toggleAudioMute();
@@ -585,6 +607,9 @@ class ApexGoatGame {
     }
     if (input.sceneCycleJustPressed) {
       this.cycleScenePreset();
+    }
+    if (input.mapToggleJustPressed && this.started) {
+      this.toggleCourseMap();
     }
 
     // Allow camera preview toggle (C) even on the Start overlay
@@ -927,6 +952,20 @@ class ApexGoatGame {
         this.audio.playComboBank();
       }
     }
+
+    const nearestSample = this.course.findNearestSample(this.snapshot.position);
+    const nextCheckpoint = this.checkpoints.runFinished
+      ? null
+      : (this.checkpoints.checkpoints[this.checkpoints.nextIndex] ?? null);
+    this.courseMap.update(
+      frameDt,
+      this.snapshot.position,
+      this.snapshot.forward,
+      nearestSample.sample.t,
+      this.herd.getHerdProgress(),
+      this.herd.getPbGhostPosition(),
+    );
+    this.horizonCompass.update(this.goatCam.camera, this.snapshot.position, nextCheckpoint);
 
     const dropMeters = Math.max(
       0,

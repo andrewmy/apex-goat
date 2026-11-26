@@ -449,13 +449,13 @@ export class Hud {
       this.controlsHintBodyEl.innerHTML = `
         <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Sprint &amp; Carve · <kbd>SPACE</kbd> Leap</div>
         <div><kbd>SHIFT</kbd> Pump / Dive · <kbd>F</kbd> Ram · <kbd>B</kbd> Bleat</div>
-        <div><kbd>R</kbd> Restart · <kbd>BKSP</kbd> CP · <kbd>C</kbd> Cam · <kbd>T</kbd> Scene · <kbd>U</kbd> Audio</div>
+        <div><kbd>R</kbd> Restart · <kbd>BKSP</kbd> CP · <kbd>C</kbd> Cam · <kbd>T</kbd> Scene · <kbd>M</kbd> Map · <kbd>U</kbd> Audio</div>
       `;
       if (this.startTipsEl) {
         this.startTipsEl.innerHTML = `
           <div><strong>Slope-Pump (SHIFT):</strong> Dive onto steep backsides to convert drop into a massive speed surge.</div>
           <div><strong>Ram (F) &amp; Wall-Kick (SPACE):</strong> Blast herd goats (+18 km/h) or kick off steep walls.</div>
-          <div><strong>Quick Keys:</strong> <strong>T</strong> Scene · <strong>C</strong> Cam · <strong>R</strong> Restart · <strong>U</strong> Audio · <strong>H</strong> Controls.</div>
+          <div><strong>Quick Keys:</strong> <strong>T</strong> Scene · <strong>M</strong> Map · <strong>C</strong> Cam · <strong>U</strong> Audio · <strong>H</strong> Controls.</div>
         `;
       }
       if (this.pauseTricksEl) {

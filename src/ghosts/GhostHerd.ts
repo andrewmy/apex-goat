@@ -11,6 +11,14 @@ export interface HerdCollisionEvent {
   surface: SurfaceType;
 }
 
+export interface HerdProgressDot {
+  t: number;
+  x: number;
+  y: number;
+  z: number;
+  knocked: boolean;
+}
+
 interface HerdMate {
   rig: GoatRig;
   /** Progress along spline 0..1 */
@@ -43,6 +51,7 @@ interface HerdMate {
 export class GhostHerd {
   private readonly course: AlpineCourse;
   private readonly herd: HerdMate[] = [];
+  private readonly progressBuffer: HerdProgressDot[] = [];
   private readonly pbRig: GoatRig;
   private readonly _ray = new THREE.Ray();
   private readonly _down = new THREE.Vector3(0, -1, 0);
@@ -140,6 +149,7 @@ export class GhostHerd {
         startleHopTimer: 0,
         currentSurface: SurfaceType.Granite,
       });
+      this.progressBuffer.push({ t: sp.startLeadT, x: 0, y: 0, z: 0, knocked: false });
     }
 
     // Translucent cyan Personal Best ghost (always intangible)
@@ -164,6 +174,25 @@ export class GhostHerd {
       mate.bumpCooldown = 0;
       mate.startleHopTimer = 0;
     }
+  }
+
+  /** Zero-GC snapshot of all herd goat positions & spline progress for the minimap/elevation profile */
+  public getHerdProgress(): readonly HerdProgressDot[] {
+    for (let i = 0; i < this.herd.length; i++) {
+      const mate = this.herd[i];
+      const out = this.progressBuffer[i];
+      out.t = mate.t;
+      out.x = mate.smoothedPos.x;
+      out.y = mate.smoothedPos.y;
+      out.z = mate.smoothedPos.z;
+      out.knocked = mate.knocked;
+    }
+    return this.progressBuffer;
+  }
+
+  /** Returns the live Personal Best ghost world position when active, else null */
+  public getPbGhostPosition(): THREE.Vector3 | null {
+    return this.pbRig.root.visible ? this.pbRig.root.position : null;
   }
 
   /**

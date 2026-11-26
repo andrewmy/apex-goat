@@ -43,6 +43,7 @@ export class InputManager {
     muteToggle: false,
     helpToggle: false,
     sceneCycle: false,
+    mapToggle: false,
   };
 
   private onKeyDownBound: (e: KeyboardEvent) => void;
@@ -95,6 +96,7 @@ export class InputManager {
       if (code === 'KeyU') this.pendingActions.muteToggle = true;
       if (code === 'KeyH') this.pendingActions.helpToggle = true;
       if (code === 'KeyT') this.pendingActions.sceneCycle = true;
+      if (code === 'KeyM') this.pendingActions.mapToggle = true;
     }
     this.keys.add(code);
   }
@@ -154,6 +156,7 @@ export class InputManager {
     const muteToggleJustPressed = this.pendingActions.muteToggle;
     const helpToggleJustPressed = this.pendingActions.helpToggle;
     const sceneCycleJustPressed = this.pendingActions.sceneCycle;
+    const mapToggleJustPressed = this.pendingActions.mapToggle;
 
     // Poll standard HTML5 Gamepad API if connected
     let gamepadConnected = false;
@@ -280,6 +283,7 @@ export class InputManager {
     this.pendingActions.muteToggle = false;
     this.pendingActions.helpToggle = false;
     this.pendingActions.sceneCycle = false;
+    this.pendingActions.mapToggle = false;
 
     return {
       device: this.activeDevice,
@@ -303,6 +307,7 @@ export class InputManager {
       muteToggleJustPressed,
       helpToggleJustPressed,
       sceneCycleJustPressed,
+      mapToggleJustPressed,
     };
   }
 

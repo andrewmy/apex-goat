@@ -67,8 +67,8 @@ export class AlpineCourse {
   public readonly decorGroup = new THREE.Group();
 
   // Gap range along spline [tStart, tEnd] for the dramatic Chasm Leap
-  private readonly gapStartT = 0.688;
-  private readonly gapEndT = 0.712;
+  public readonly gapStartT = 0.688;
+  public readonly gapEndT = 0.712;
   public readonly finishT = 0.885;
   public readonly finishStopPos = new THREE.Vector3();
 

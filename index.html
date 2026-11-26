@@ -83,10 +83,164 @@
         align-items: flex-start;
         gap: 16px;
       }
+      .hud-top-left-col {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
       .hud-top-left {
         display: flex;
         align-items: center;
         gap: 10px;
+      }
+      .map-toggle-pill {
+        pointer-events: auto;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 9px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(10, 18, 30, 0.36);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        color: rgba(235, 244, 255, 0.86);
+        font-family: inherit;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+        transition:
+          background 0.12s ease,
+          border-color 0.12s ease,
+          color 0.12s ease;
+      }
+      .map-toggle-pill:hover {
+        background: rgba(14, 24, 42, 0.62);
+        border-color: rgba(95, 243, 255, 0.55);
+        color: #ffffff;
+      }
+      .map-toggle-pill.active {
+        border-color: rgba(95, 243, 255, 0.48);
+        color: #ffffff;
+      }
+      /* Borderless Floating Top-Down Minimap + Elevation Profile */
+      .course-map-card {
+        pointer-events: none;
+        width: 174px;
+        padding: 2px 0 0;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        transition:
+          opacity 0.16s ease,
+          transform 0.16s ease;
+      }
+      .course-map-card.hidden {
+        display: none;
+      }
+      .course-map-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 2px;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(235, 245, 255, 0.86);
+        text-shadow:
+          0 1px 8px rgba(0, 0, 0, 0.9),
+          0 0 14px rgba(0, 0, 0, 0.55);
+      }
+      .course-map-close {
+        pointer-events: auto;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        color: rgba(230, 242, 255, 0.65);
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1;
+        padding: 0 2px;
+        text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+      }
+      .course-map-close:hover {
+        color: #ffffff;
+      }
+      .minimap-canvas {
+        width: 164px;
+        height: 168px;
+        display: block;
+      }
+      .course-map-divider {
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.22),
+          rgba(255, 255, 255, 0.04) 75%,
+          transparent
+        );
+        margin: 1px 4px 2px 2px;
+      }
+      .elev-canvas {
+        width: 164px;
+        height: 62px;
+        display: block;
+      }
+      .course-map-legend {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1px 4px 0 2px;
+        font-size: 8.5px;
+        font-weight: 800;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: rgba(235, 245, 255, 0.84);
+        text-shadow:
+          0 1px 7px rgba(0, 0, 0, 0.92),
+          0 0 12px rgba(0, 0, 0, 0.55);
+      }
+      .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .legend-dot {
+        width: 5.5px;
+        height: 5.5px;
+        border-radius: 50%;
+        display: inline-block;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.75);
+      }
+      /* Whisper-Thin Horizon Landmark Compass */
+      .horizon-compass-wrap {
+        width: 340px;
+        height: 28px;
+        margin-bottom: 1px;
+        mask-image: linear-gradient(90deg, transparent, black 16%, black 84%, transparent);
+        -webkit-mask-image: linear-gradient(90deg, transparent, black 16%, black 84%, transparent);
+      }
+      .horizon-compass-canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .mobile-elev-wrap {
+        display: none;
+        width: 176px;
+        height: 24px;
+        margin-top: 2px;
+      }
+      .mobile-elev-canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
       }
       .gopro-rec {
         display: flex;
@@ -1510,12 +1664,22 @@
           gap: 8px;
         }
         .gopro-rec,
+        .map-toggle-pill,
+        .course-map-card,
         .hud-top-right,
         .controls-hint,
         .help-toggle-chip,
         .hud-bottom-left,
         .speedo-wrap {
           display: none !important;
+        }
+        .horizon-compass-wrap {
+          width: 192px;
+          height: 24px;
+          margin-bottom: 0;
+        }
+        .mobile-elev-wrap {
+          display: block;
         }
         .mute-indicator {
           backdrop-filter: none;
@@ -1670,38 +1834,96 @@
 
     <div id="hud">
       <div class="hud-top">
-        <div class="hud-top-left">
-          <div class="gopro-rec">
-            <span class="rec-dot"></span>
-            <span id="cam-label">CHASE CAM · -- FPS</span>
+        <div class="hud-top-left-col">
+          <div class="hud-top-left">
+            <div class="gopro-rec">
+              <span class="rec-dot"></span>
+              <span id="cam-label">CHASE CAM · -- FPS</span>
+            </div>
+
+            <button
+              type="button"
+              class="map-toggle-pill active"
+              id="map-toggle-pill"
+              aria-label="Toggle course map and elevation profile (M)"
+            >
+              <span>MAP</span>
+              <kbd class="pill-kbd">M</kbd>
+            </button>
+
+            <div id="mobile-util-bar" aria-label="Quick actions">
+              <button type="button" class="hud-icon-btn" id="hud-btn-pause" aria-label="Pause">
+                ⏸
+              </button>
+              <button type="button" class="hud-icon-btn" id="hud-btn-restart" aria-label="Restart">
+                ↺
+              </button>
+              <button
+                type="button"
+                class="hud-icon-btn"
+                id="hud-btn-cp"
+                aria-label="Last checkpoint"
+              >
+                ⚑
+              </button>
+              <button
+                type="button"
+                class="hud-icon-btn"
+                id="hud-btn-cam"
+                aria-label="Toggle camera"
+              >
+                🎥
+              </button>
+            </div>
+
+            <button
+              type="button"
+              class="mute-indicator hidden"
+              id="mute-indicator"
+              aria-label="Audio muted — click to unmute"
+            >
+              🔇 MUTED
+            </button>
           </div>
 
-          <div id="mobile-util-bar" aria-label="Quick actions">
-            <button type="button" class="hud-icon-btn" id="hud-btn-pause" aria-label="Pause">
-              ⏸
-            </button>
-            <button type="button" class="hud-icon-btn" id="hud-btn-restart" aria-label="Restart">
-              ↺
-            </button>
-            <button type="button" class="hud-icon-btn" id="hud-btn-cp" aria-label="Last checkpoint">
-              ⚑
-            </button>
-            <button type="button" class="hud-icon-btn" id="hud-btn-cam" aria-label="Toggle camera">
-              🎥
-            </button>
-          </div>
-
-          <button
-            type="button"
-            class="mute-indicator hidden"
-            id="mute-indicator"
-            aria-label="Audio muted — click to unmute"
+          <div
+            class="course-map-card"
+            id="course-map-card"
+            aria-label="Course minimap and elevation"
           >
-            🔇 MUTED
-          </button>
+            <div class="course-map-head">
+              <span>THE GOAT SPIRE · 765M</span>
+              <button
+                type="button"
+                class="course-map-close"
+                id="course-map-close"
+                aria-label="Hide map (M)"
+              >
+                ×
+              </button>
+            </div>
+            <canvas id="minimap-canvas" class="minimap-canvas"></canvas>
+            <div class="course-map-divider"></div>
+            <canvas id="elev-canvas" class="elev-canvas"></canvas>
+            <div class="course-map-legend">
+              <span class="legend-item"
+                ><span class="legend-dot" style="background: #fff"></span>You</span
+              >
+              <span class="legend-item"
+                ><span class="legend-dot" style="background: #5df2ff"></span>PB</span
+              >
+              <span class="legend-item"
+                ><span class="legend-dot" style="background: rgba(255, 245, 225, 0.72)"></span
+                >Herd</span
+              >
+            </div>
+          </div>
         </div>
 
         <div class="timer-col" style="display: flex; flex-direction: column; align-items: center">
+          <div class="horizon-compass-wrap" aria-hidden="true">
+            <canvas id="horizon-compass" class="horizon-compass-canvas"></canvas>
+          </div>
           <div class="timer-block">
             <div class="timer-main" id="timer-display">00:00.00</div>
             <div class="timer-meta">
@@ -1712,6 +1934,10 @@
               <span id="drop-display">DROP 0m</span>
             </div>
             <div class="split-delta" id="split-delta"></div>
+          </div>
+
+          <div class="mobile-elev-wrap" id="mobile-elev-wrap" aria-hidden="true">
+            <canvas id="mobile-elev-canvas" class="mobile-elev-canvas"></canvas>
           </div>
 
           <div class="combo-wrap" id="combo-wrap">
@@ -1743,6 +1969,7 @@
             <span id="next-medal-target" class="medal-gold">GOLD 00:32.00</span>
           </div>
           <div class="hud-hotkey-bar">
+            <span><kbd>M</kbd> Map</span>
             <span><kbd>C</kbd> Cam</span>
             <span><kbd>U</kbd> Audio</span>
             <span><kbd>H</kbd> Help</span>
@@ -2039,8 +2266,8 @@
             <div class="bind-key">C / B / ESC</div>
             <div class="bind-pad" id="bind-pad-misc">VIEW / &uarr; / MENU</div>
 
-            <div class="bind-act">Scene / Audio / Help</div>
-            <div class="bind-key">T / U / H</div>
+            <div class="bind-act">Scene / Map / Audio / Help</div>
+            <div class="bind-key">T / M / U / H</div>
             <div class="bind-pad">In Pause</div>
           </div>
           <div class="gp-status" id="gp-status">
