@@ -68,6 +68,10 @@ export class Hud {
   private readonly slopeEl = document.getElementById('slope-display')!;
   private readonly surfaceEl = document.getElementById('surface-display')!;
   private readonly speedoWrapEl = document.getElementById('speedo-wrap')!;
+  private readonly mSpeedPillEl = document.getElementById('mobile-speed-pill');
+  private readonly mSpeedEl = document.getElementById('m-speed-display');
+  private readonly mSurfaceEl = document.getElementById('m-surface-display');
+  private readonly pausePbEl = document.getElementById('pause-pb');
   private readonly speedArcEl = document.getElementById('speed-arc') as unknown as SVGCircleElement;
   private readonly pumpArcEl = document.getElementById('pump-arc') as unknown as SVGCircleElement;
   private readonly needleEl = document.getElementById('speed-needle') as unknown as SVGGElement;
@@ -175,7 +179,11 @@ export class Hud {
   }
 
   public setPersonalBest(pbSec: number | null): void {
-    this.pbEl.textContent = pbSec !== null ? formatTime(pbSec) : '--:--.--';
+    const formatted = pbSec !== null ? formatTime(pbSec) : '--:--.--';
+    this.pbEl.textContent = formatted;
+    if (this.pausePbEl) {
+      this.pausePbEl.textContent = formatted;
+    }
   }
 
   public setCameraMode(mode: CameraMode): void {
@@ -265,7 +273,28 @@ export class Hud {
     if (device === this.activeDevice && !layoutChanged) return;
     this.activeDevice = device;
 
-    if (device === 'gamepad') {
+    if (device === 'touch') {
+      if (this.startTipsEl) {
+        this.startTipsEl.innerHTML = `
+          <div><strong>Auto-Sprint &amp; Floating Stick:</strong> Drag left/right anywhere in the bottom-left zone to carve. Pull down on ground to brake, or drag up/down mid-air for <strong>Frontflips &amp; Backflips</strong>.</div>
+          <div><strong>Slope-Pump &amp; 360° Spins:</strong> Hold <strong>PUMP</strong> on steep faces (&ge;15&deg;) or while diving onto rollers for a massive speed surge—slide left/right on <strong>PUMP</strong> mid-air for 360&deg; Spins!</div>
+          <div><strong>Leap, Ram &amp; Bleat:</strong> Tap <strong>LEAP</strong> off steep walls to Wall-Kick, <strong>RAM</strong> to blast rival goats (+18 km/h), and <strong>BLEAT</strong> mid-air for an echoing canyon boost.</div>
+        `;
+      }
+      if (this.pauseTricksEl) {
+        this.pauseTricksEl.innerHTML = `
+          <div><strong>Flips &amp; 360° Spins:</strong> Drag the <strong>Left Stick</strong> up/down mid-air to Flip, or slide left/right on <strong>PUMP/DIVE</strong> for 360&deg; Spins—stomp upright for a boost!</div>
+          <div><strong>Headbutt Ram:</strong> Tap <strong>RAM</strong> to blast rival herd goats off the cliff for a +18 km/h boost!</div>
+          <div><strong>Apex Bleat Taunt:</strong> Tap <strong>BLEAT</strong> mid-air for an echoing canyon boost, or near herd goats to scatter them!</div>
+          <div><strong>Slope-Pump &amp; Wall-Kick:</strong> Hold <strong>PUMP</strong> on steep downhills (&ge;15&deg;) to pump; tap <strong>LEAP</strong> off steep cliffs (&ge;40&deg;) to Wall-Kick.</div>
+        `;
+      }
+      if (this.startBtnEl) this.startBtnEl.textContent = 'Drop In';
+      if (this.resumeBtnEl) this.resumeBtnEl.textContent = 'Resume';
+      if (this.pauseRestartBtnEl) this.pauseRestartBtnEl.textContent = 'Restart Run';
+      if (this.pauseCamBtnEl) this.pauseCamBtnEl.textContent = 'Toggle Camera';
+      if (this.finishRetryBtnEl) this.finishRetryBtnEl.textContent = 'Race Your Ghost';
+    } else if (device === 'gamepad') {
       this.controlsHintEl.innerHTML = `
         <div><kbd>${g.accel}</kbd>/<kbd>${g.brake}</kbd> Sprint &amp; Brake · <kbd>L-STICK</kbd> Carve · <kbd>${g.jump}</kbd> Leap</div>
         <div><kbd>${g.pump}</kbd>/<kbd>${g.back}</kbd> Pump / Dive · <kbd>${g.ram}</kbd> Headbutt Ram · <kbd>↑</kbd> Bleat</div>
@@ -344,13 +373,15 @@ export class Hud {
     if (speedStr !== this.lastSpeedText) {
       this.lastSpeedText = speedStr;
       this.speedEl.textContent = speedStr;
+      if (this.mSpeedEl) this.mSpeedEl.textContent = speedStr;
     }
 
+    const isTouch = this.activeDevice === 'touch';
     const isPad = this.activeDevice === 'gamepad';
     const g = PAD_GLYPHS[this.activeLayout];
-    const jumpKey = isPad ? g.jump : 'SPACE';
-    const pumpKey = isPad ? `${g.pump}/${g.back}` : 'SHIFT';
-    const bleatKey = isPad ? '↑' : 'B';
+    const jumpKey = isTouch ? 'LEAP' : isPad ? g.jump : 'SPACE';
+    const pumpKey = isTouch ? 'PUMP' : isPad ? `${g.pump}/${g.back}` : 'SHIFT';
+    const bleatKey = isTouch ? 'BLEAT' : isPad ? '↑' : 'B';
 
     const wallKickReady =
       snap.wallRunning || (snap.grounded && snap.slopeDeg >= 40 && snap.speed >= 6.0);
@@ -401,26 +432,42 @@ export class Hud {
       const cfg = getSurfaceConfig(snap.surface);
       this.surfaceEl.textContent = cfg.name;
       this.surfaceEl.style.color = cfg.colorHex;
+      if (this.mSurfaceEl) {
+        this.mSurfaceEl.textContent = cfg.name;
+        this.mSurfaceEl.style.color = cfg.colorHex;
+      }
     }
 
-    // Smooth needle & sweeping circular arcs for silky motorsport feel
-    const rawKmh = snap.speed * 3.6;
-    this.smoothedKmh += (rawKmh - this.smoothedKmh) * 0.25;
-    const speedFrac = Math.max(0, Math.min(1, this.smoothedKmh / this.maxDialKmh));
-    this.speedArcEl.style.strokeDashoffset = (this.speedArcLen * (1 - speedFrac)).toFixed(2);
-    const needleDeg = -130 + speedFrac * 260;
-    this.needleEl.setAttribute('transform', `rotate(${needleDeg.toFixed(1)} 90 90)`);
+    const isSurge = snap.pumpingNow || snap.pumpBoostFlash > 0.25;
+    const isRedline = kmh >= 130 && !snap.pumpingNow;
 
-    // Inner concentric Pump / Charge ring
-    const pumpFrac = Math.max(
-      0,
-      Math.min(1, Math.max(snap.jumpCharge, snap.pumpBoostFlash, snap.crouchAmount * 0.55)),
-    );
-    this.pumpArcEl.style.strokeDashoffset = (this.pumpArcLen * (1 - pumpFrac)).toFixed(2);
+    if (this.mSpeedPillEl) {
+      this.mSpeedPillEl.classList.toggle('surge', isSurge);
+      this.mSpeedPillEl.classList.toggle('redline', isRedline);
+    }
 
-    // Dynamic bezel glow on Slope-Pump surge or high-speed redline (> 130 km/h)
-    this.speedoWrapEl.classList.toggle('surge', snap.pumpingNow || snap.pumpBoostFlash > 0.25);
-    this.speedoWrapEl.classList.toggle('redline', kmh >= 130 && !snap.pumpingNow);
+    // Skip expensive SVG arc/filter mutations when desktop dial is hidden on compact/mobile viewports
+    const compactMobile = window.innerWidth <= 820 || isTouch;
+    if (!compactMobile) {
+      // Smooth needle & sweeping circular arcs for silky motorsport feel
+      const rawKmh = snap.speed * 3.6;
+      this.smoothedKmh += (rawKmh - this.smoothedKmh) * 0.25;
+      const speedFrac = Math.max(0, Math.min(1, this.smoothedKmh / this.maxDialKmh));
+      this.speedArcEl.style.strokeDashoffset = (this.speedArcLen * (1 - speedFrac)).toFixed(2);
+      const needleDeg = -130 + speedFrac * 260;
+      this.needleEl.setAttribute('transform', `rotate(${needleDeg.toFixed(1)} 90 90)`);
+
+      // Inner concentric Pump / Charge ring
+      const pumpFrac = Math.max(
+        0,
+        Math.min(1, Math.max(snap.jumpCharge, snap.pumpBoostFlash, snap.crouchAmount * 0.55)),
+      );
+      this.pumpArcEl.style.strokeDashoffset = (this.pumpArcLen * (1 - pumpFrac)).toFixed(2);
+
+      // Dynamic bezel glow on Slope-Pump surge or high-speed redline (> 130 km/h)
+      this.speedoWrapEl.classList.toggle('surge', isSurge);
+      this.speedoWrapEl.classList.toggle('redline', isRedline);
+    }
 
     // Speed rush vignette above 75 km/h
     const speedRush = Math.max(0, Math.min(1, (kmh - 70) / 70));

@@ -19,19 +19,20 @@ export class GoatAudio {
   private windDuckUntil = 0;
 
   constructor() {
-    // Ensure any mouse click or keypress unlocks Web Audio even if the user dropped in via gamepad
+    // Ensure any tap, click, or keypress unlocks/resumes Web Audio (including iOS 'interrupted' state)
     const resumeOnGesture = () => {
-      if (this.ctx && this.ctx.state === 'suspended') {
+      if (this.ctx && this.ctx.state !== 'running') {
         this.ctx.resume().catch(() => {});
       }
     };
     window.addEventListener('pointerdown', resumeOnGesture);
+    window.addEventListener('touchend', resumeOnGesture);
     window.addEventListener('keydown', resumeOnGesture);
   }
 
   public unlock(): void {
     if (this.initialized) {
-      if (this.ctx && this.ctx.state === 'suspended') {
+      if (this.ctx && this.ctx.state !== 'running') {
         this.ctx.resume().catch(() => {});
       }
       return;

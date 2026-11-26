@@ -33,7 +33,7 @@ export interface SurfaceConfig {
   particleIntensity: number;
 }
 
-export type InputDevice = 'keyboard' | 'gamepad';
+export type InputDevice = 'keyboard' | 'gamepad' | 'touch';
 export type GamepadLayout = 'xbox' | 'playstation';
 
 export interface InputState {

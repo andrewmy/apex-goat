@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { InputManager } from './input/InputManager';
+import { isTouchCapableDevice } from './input/TouchControls';
 import { AlpineEnvironment } from './world/Environment';
 import { AlpineCourse } from './world/AlpineCourse';
 import { CheckpointManager } from './world/Checkpoints';
@@ -72,11 +73,15 @@ class ApexGoatGame {
   public readonly buildBadge: BuildBadge;
 
   private readonly snapshot = createEmptySnapshot();
+  private readonly isMobileProfile: boolean;
   private started = false;
   private paused = false;
+  private landscapeDismissed = false;
+  private rotateOverlayVisible = false;
   private startOverlayEl!: HTMLElement;
   private pauseOverlayEl!: HTMLElement;
   private finishOverlayEl!: HTMLElement;
+  private rotateOverlayEl!: HTMLElement;
   private togglePauseTab!: () => void;
   private maxRunSpeedKmh = 0;
   private accumulator = 0;
@@ -87,22 +92,25 @@ class ApexGoatGame {
   private readonly fixedDt = 1 / 120; // Deterministic 120 Hz physics!
 
   constructor() {
+    this.isMobileProfile = isTouchCapableDevice();
     const container = document.getElementById('app')!;
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: 'high-performance',
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.isMobileProfile ? 1.5 : 2));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = this.isMobileProfile
+      ? THREE.PCFShadowMap
+      : THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.08;
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
     this.input = new InputManager();
-    this.env = new AlpineEnvironment(this.scene);
+    this.env = new AlpineEnvironment(this.scene, { isMobile: this.isMobileProfile });
     this.course = new AlpineCourse(this.scene);
     this.checkpoints = new CheckpointManager(this.course.checkpoints);
     this.controller = new GoatController(this.course);
@@ -118,7 +126,7 @@ class ApexGoatGame {
     this.audio = new GoatAudio();
     this.particles = new PebbleParticles(this.scene);
     this.recorder = new GhostRecorder();
-    this.herd = new GhostHerd(this.scene, this.course);
+    this.herd = new GhostHerd(this.scene, this.course, { isMobile: this.isMobileProfile });
     this.hud = new Hud();
     this.combo = new ComboTracker();
     this.buildBadge = new BuildBadge();
@@ -127,14 +135,50 @@ class ApexGoatGame {
     this.hud.setCameraMode(this.goatCam.mode);
 
     this.bindUiEvents();
-    window.addEventListener('resize', () => {
+    const onViewportResize = () => {
       this.renderer.setSize(window.innerWidth, window.innerHeight);
       this.goatCam.resize(window.innerWidth, window.innerHeight);
-    });
+      this.updateOrientationGuard();
+    };
+    window.addEventListener('resize', onViewportResize);
+    window.addEventListener('orientationchange', onViewportResize);
+    this.updateOrientationGuard();
 
     // Render initial dramatic view perched atop The Goat Spire right away
     this.resetRun();
     this.loop(performance.now());
+  }
+
+  private updateTouchControlsVisibility(): void {
+    const showControls =
+      this.started && !this.paused && !this.checkpoints.runFinished && !this.rotateOverlayVisible;
+    this.input.touch.setVisible(showControls);
+  }
+
+  private updateOrientationGuard(): void {
+    if (!this.rotateOverlayEl) return;
+    const isPhoneLandscape =
+      this.isMobileProfile && window.innerWidth > window.innerHeight && window.innerHeight <= 520;
+
+    if (!isPhoneLandscape) {
+      // Reset dismiss flag when rotated back to portrait so future rotations suggest portrait again
+      this.landscapeDismissed = false;
+    }
+
+    const shouldShow = isPhoneLandscape && !this.landscapeDismissed;
+    const changed = shouldShow !== this.rotateOverlayVisible;
+    this.rotateOverlayVisible = shouldShow;
+    this.rotateOverlayEl.classList.toggle('hidden', !shouldShow);
+
+    if (shouldShow) {
+      this.input.touch.resetAllPointers();
+      if (this.started && !this.paused && !this.checkpoints.runFinished) {
+        this.setPaused(true);
+      }
+    }
+    if (changed) {
+      this.updateTouchControlsVisibility();
+    }
   }
 
   private beginGame(): void {
@@ -145,6 +189,7 @@ class ApexGoatGame {
     this.audio.playBleat();
     this.resetRun();
     this.checkpoints.startRun();
+    this.updateTouchControlsVisibility();
     this.hud.showBanner('DROP IN!', 'THREAD THE RAZOR LEDGE', 1300);
   }
 
@@ -153,10 +198,17 @@ class ApexGoatGame {
     const startBtn = document.getElementById('start-btn')!;
     this.pauseOverlayEl = document.getElementById('pause-overlay')!;
     this.finishOverlayEl = document.getElementById('finish-overlay')!;
+    this.rotateOverlayEl = document.getElementById('rotate-overlay')!;
+    const rotateDismissBtn = document.getElementById('rotate-dismiss-btn');
     const resumeBtn = document.getElementById('resume-btn')!;
     const pauseRestartBtn = document.getElementById('pause-restart-btn')!;
     const pauseCamBtn = document.getElementById('pause-cam-btn')!;
     const finishRetryBtn = document.getElementById('finish-retry-btn')!;
+
+    rotateDismissBtn?.addEventListener('click', () => {
+      this.landscapeDismissed = true;
+      this.updateOrientationGuard();
+    });
 
     startBtn.addEventListener('click', () => this.beginGame());
     resumeBtn.addEventListener('click', () => this.setPaused(false));
@@ -212,6 +264,7 @@ class ApexGoatGame {
     this.paused = nextPaused;
     this.pauseOverlayEl.classList.toggle('hidden', !nextPaused);
     this.audio.setPaused(nextPaused);
+    this.updateTouchControlsVisibility();
     if (!nextPaused) {
       this.lastFrameTime = performance.now();
       this.accumulator = 0;
@@ -291,6 +344,7 @@ class ApexGoatGame {
     }
 
     this.finishOverlayEl.classList.remove('hidden');
+    this.updateTouchControlsVisibility();
   }
 
   private resetRun(): void {
@@ -307,6 +361,7 @@ class ApexGoatGame {
     this.combo.reset();
     this.goatCam.reset();
     this.hud.clearSplitDelta();
+    this.updateTouchControlsVisibility();
   }
 
   /** Registers a trick into the live Combo Chain, plays rising chime, and awards flow boost at ×3+! */
@@ -682,6 +737,7 @@ class ApexGoatGame {
       this.currentFps,
     );
     this.hud.updateCombo(this.combo.getSnapshot());
+    this.input.updateTouchVisuals(this.snapshot);
 
     this.renderer.render(this.scene, this.goatCam.camera);
   };

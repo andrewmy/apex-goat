@@ -35,7 +35,8 @@ function fbm2(x: number, z: number): number {
 export class AlpineEnvironment {
   public sunLight: THREE.DirectionalLight;
 
-  constructor(scene: THREE.Scene) {
+  constructor(scene: THREE.Scene, options?: { isMobile?: boolean }) {
+    const isMobile = options?.isMobile ?? false;
     // Crisp high-altitude cobalt alpine sky + atmospheric depth fog
     scene.background = new THREE.Color(0x5da4e8);
     scene.fog = new THREE.FogExp2(0x8bc0ec, 0.00048);
@@ -87,7 +88,8 @@ export class AlpineEnvironment {
     this.sunLight = new THREE.DirectionalLight(0xfff2da, 2.2);
     this.sunLight.position.set(220, 290, 140);
     this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.set(2048, 2048);
+    const shadowSize = isMobile ? 1024 : 2048;
+    this.sunLight.shadow.mapSize.set(shadowSize, shadowSize);
     this.sunLight.shadow.camera.near = 20;
     this.sunLight.shadow.camera.far = 1100;
     const d = 140;
@@ -100,7 +102,7 @@ export class AlpineEnvironment {
     scene.add(this.sunLight.target);
 
     this.buildValleyAndPeaks(scene);
-    this.buildPineForest(scene);
+    this.buildPineForest(scene, isMobile ? 320 : 700);
   }
 
   public updateSunAnchor(playerPos: THREE.Vector3): void {
@@ -207,9 +209,8 @@ export class AlpineEnvironment {
     scene.add(new THREE.Mesh(riverGeo, riverMat));
   }
 
-  private buildPineForest(scene: THREE.Scene): void {
+  private buildPineForest(scene: THREE.Scene, treeCount = 700): void {
     // Hundreds of tiny instanced pine trees down in the valley floor to sell the 600m vertigo drop
-    const treeCount = 700;
     const coneGeo = new THREE.ConeGeometry(4.2, 16, 5);
     coneGeo.translate(0, 8, 0);
     const coneMat = new THREE.MeshStandardMaterial({

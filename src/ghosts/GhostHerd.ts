@@ -62,10 +62,11 @@ export class GhostHerd {
   private readonly _hitCenter = new THREE.Vector3();
   private readonly _diff = new THREE.Vector3();
 
-  constructor(scene: THREE.Scene, course: AlpineCourse) {
+  constructor(scene: THREE.Scene, course: AlpineCourse, options?: { isMobile?: boolean }) {
     this.course = course;
+    const isMobile = options?.isMobile ?? false;
 
-    // 28 varied alpine mountain goats forming a lively stampede from Start Ridge to Snow Bowl!
+    // 28 varied alpine mountain goats on desktop (12 on mobile for crisp 60fps draw-call budgets!)
     const coatPalette: Array<[number, number]> = [
       [0xf7f5f0, 0xded9ce],
       [0xeae2d2, 0xd5c8b4],
@@ -89,9 +90,10 @@ export class GhostHerd {
       { coat: 0xe3d8c5, accent: 0xc9bca6, startLeadT: 0.006, durationSec: 40.5, lat: 2.2 },
     ];
 
-    // Add 24 more staggered alpine herd clusters down Razor Ledge, Granite Rollers, Scree Chute & Snow Bowl
-    for (let i = 0; i < 24; i++) {
-      const frac = (i + 1) / 25;
+    // Add staggered alpine herd clusters down Razor Ledge, Granite Rollers, Scree Chute & Snow Bowl
+    const extraCount = isMobile ? 8 : 24;
+    for (let i = 0; i < extraCount; i++) {
+      const frac = (i + 1) / (extraCount + 1);
       // Cluster goats slightly in lively 2-3 goat mini-packs so you can bowl through groups!
       const clusterJitter = ((i % 3) - 1) * 0.006;
       const startLeadT = THREE.MathUtils.clamp(0.032 + frac * 0.68 + clusterJitter, 0.025, 0.74);
@@ -113,6 +115,7 @@ export class GhostHerd {
       const rig = new GoatRig({
         coatColor: sp.coat,
         accentColor: sp.accent,
+        castShadow: !isMobile,
       });
       rig.setFirstPersonMode(false);
       scene.add(rig.root);

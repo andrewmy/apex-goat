@@ -105,16 +105,24 @@ export class GoatCamera {
     if (this.mode === 'chase') {
       rig.setFirstPersonMode(false);
 
+      // In portrait aspect ratios (aspect < 1), widen vertical FOV and pull back slightly so
+      // horizontal cliff visibility stays generous and the goat frames cleanly above thumb controls.
+      const aspect = this.camera.aspect;
+      const isPortrait = aspect < 1;
+      const portraitPullback = isPortrait ? THREE.MathUtils.clamp((1 - aspect) * 1.6, 0, 0.9) : 0;
+      const portraitFovBoost = isPortrait ? THREE.MathUtils.clamp((1 - aspect) * 32, 0, 18) : 0;
+
       // Pull back smoothly at high speed & during big airs; lift slightly over steep drop crests
       // so you can spot the backside of every roller for Slope-Pumping!
       const airPullback = snap.grounded ? 0 : Math.min(2.4, snap.airTime * 1.9);
       const downhillPitch = THREE.MathUtils.clamp(-this._velDir.y, 0, 0.75);
-      const backDist = 4.2 + speedNorm * 1.85 + airPullback;
+      const backDist = 4.2 + speedNorm * 1.85 + airPullback + portraitPullback;
       const heightOff =
         2.05 +
         speedNorm * 0.5 +
         downhillPitch * 1.45 +
-        airPullback * 0.45 -
+        airPullback * 0.45 +
+        portraitPullback * 0.32 -
         snap.crouchAmount * 0.2;
 
       this._desiredPos
@@ -181,11 +189,15 @@ export class GoatCamera {
         .normalize();
 
       // Dynamic FOV: 78° idle -> 104° terminal velocity + punchy +8° kick on Slope-Pump boost!
-      const targetFov =
+      // Widened gracefully in portrait so horizontal cliff sightlines stay readable.
+      const targetFov = Math.min(
+        118,
         78 +
-        speedNorm * 24 +
-        snap.pumpBoostFlash * 8.5 +
-        (snap.crouching && !snap.grounded ? 5 : 0);
+          portraitFovBoost +
+          speedNorm * 24 +
+          snap.pumpBoostFlash * 8.5 +
+          (snap.crouching && !snap.grounded ? 5 : 0),
+      );
       this.camera.fov += (targetFov - this.camera.fov) * Math.min(1, dt * 8.5);
       this.camera.updateProjectionMatrix();
 
@@ -225,7 +237,12 @@ export class GoatCamera {
         .lerp(snap.up, 0.22)
         .normalize();
 
-      const targetFov = 102 + speedNorm * 20 + snap.pumpBoostFlash * 7.5;
+      const portraitFovBoost =
+        this.camera.aspect < 1 ? THREE.MathUtils.clamp((1 - this.camera.aspect) * 24, 0, 14) : 0;
+      const targetFov = Math.min(
+        128,
+        102 + portraitFovBoost + speedNorm * 20 + snap.pumpBoostFlash * 7.5,
+      );
       this.camera.fov += (targetFov - this.camera.fov) * Math.min(1, dt * 8.5);
       this.camera.updateProjectionMatrix();
 

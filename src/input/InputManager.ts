@@ -1,4 +1,5 @@
-import { GamepadLayout, InputDevice, InputState } from '../types';
+import { GamepadLayout, GoatPhysicsSnapshot, InputDevice, InputState } from '../types';
+import { TouchControls } from './TouchControls';
 
 function detectGamepadLayout(padId: string): GamepadLayout {
   const id = padId.toLowerCase();
@@ -15,6 +16,7 @@ function detectGamepadLayout(padId: string): GamepadLayout {
 }
 
 export class InputManager {
+  public readonly touch: TouchControls;
   private keys = new Set<string>();
   private activeDevice: InputDevice = 'keyboard';
   private gamepadLayout: GamepadLayout = 'xbox';
@@ -45,6 +47,12 @@ export class InputManager {
   private onBlurBound: () => void;
 
   constructor() {
+    this.touch = new TouchControls();
+    if (this.touch.isTouchDevice) {
+      this.activeDevice = 'touch';
+      document.body.classList.add('touch-device');
+    }
+
     this.onKeyDownBound = this.onKeyDown.bind(this);
     this.onKeyUpBound = this.onKeyUp.bind(this);
     this.onBlurBound = this.onBlur.bind(this);
@@ -52,6 +60,10 @@ export class InputManager {
     window.addEventListener('keydown', this.onKeyDownBound, { passive: false });
     window.addEventListener('keyup', this.onKeyUpBound);
     window.addEventListener('blur', this.onBlurBound);
+  }
+
+  public updateTouchVisuals(snap: GoatPhysicsSnapshot): void {
+    this.touch.updateVisuals(snap);
   }
 
   private onKeyDown(e: KeyboardEvent): void {
@@ -141,8 +153,8 @@ export class InputManager {
       if (!pad || !pad.connected) continue;
       gamepadConnected = true;
       this.gamepadLayout = detectGamepadLayout(pad.id);
-      // If a controller is already connected on load before any keyboard input, default UI to gamepad!
-      if (!this.userTouchedKeyboard) {
+      // If a controller is already connected on load before any keyboard/touch input, default UI to gamepad!
+      if (!this.userTouchedKeyboard && this.activeDevice === 'keyboard') {
         this.activeDevice = 'gamepad';
       }
       const rawStickX = pad.axes[0] ?? 0;
@@ -219,6 +231,33 @@ export class InputManager {
       this.prevBack = gpBack;
       break;
     }
+
+    // Poll touch controls (Portrait-first floating stick + 2+2 right-thumb arc + HUD utilities)
+    const touchState = this.touch.poll();
+    if (touchState.anyTouchUsed) {
+      this.activeDevice = 'touch';
+    }
+    if (this.activeDevice === 'touch' && !gamepadConnected) {
+      if (throttle === 0) throttle = touchState.throttle;
+      if (Math.abs(touchState.steer) > Math.abs(steer)) steer = touchState.steer;
+      if (Math.abs(touchState.airPitch) > Math.abs(airPitch)) airPitch = touchState.airPitch;
+      if (Math.abs(touchState.airSpin) > Math.abs(airSpin)) airSpin = touchState.airSpin;
+    } else if (touchState.anyTouchUsed) {
+      if (Math.abs(touchState.steer) > Math.abs(steer)) steer = touchState.steer;
+      if (Math.abs(touchState.airPitch) > Math.abs(airPitch)) airPitch = touchState.airPitch;
+      if (Math.abs(touchState.airSpin) > Math.abs(airSpin)) airSpin = touchState.airSpin;
+      if (touchState.throttle < 0) throttle = touchState.throttle;
+    }
+    if (touchState.jumpHeld) jumpHeld = true;
+    if (touchState.crouchHeld) crouchHeld = true;
+    if (touchState.jumpJustPressed) jumpJustPressed = true;
+    if (touchState.jumpJustReleased) jumpJustReleased = true;
+    if (touchState.headbuttJustPressed) headbuttJustPressed = true;
+    if (touchState.bleatJustPressed) bleatJustPressed = true;
+    if (touchState.restartJustPressed) restartJustPressed = true;
+    if (touchState.checkpointJustPressed) checkpointJustPressed = true;
+    if (touchState.cameraToggleJustPressed) cameraToggleJustPressed = true;
+    if (touchState.pauseJustPressed) pauseJustPressed = true;
 
     // Clear edge-triggered flags after consumption
     this.pendingActions.jumpPressed = false;
