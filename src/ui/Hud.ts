@@ -1,4 +1,47 @@
-import { GoatPhysicsSnapshot, InputDevice, SurfaceType } from '../types';
+import { GamepadLayout, GoatPhysicsSnapshot, InputDevice, SurfaceType } from '../types';
+
+interface PadGlyphs {
+  label: string;
+  accel: string;
+  brake: string;
+  jump: string;
+  pump: string;
+  back: string;
+  ram: string;
+  restart: string;
+  cp: string;
+  cam: string;
+  pause: string;
+}
+
+const PAD_GLYPHS: Record<GamepadLayout, PadGlyphs> = {
+  xbox: {
+    label: 'Xbox',
+    accel: 'RT',
+    brake: 'LT',
+    jump: 'A',
+    pump: 'RB',
+    back: 'B',
+    ram: 'X',
+    restart: 'Y',
+    cp: 'LB',
+    cam: 'VIEW',
+    pause: 'MENU',
+  },
+  playstation: {
+    label: 'DualSense',
+    accel: 'R2',
+    brake: 'L2',
+    jump: '×',
+    pump: 'R1',
+    back: '○',
+    ram: '□',
+    restart: '△',
+    cp: 'L1',
+    cam: 'CREATE',
+    pause: 'OPTIONS',
+  },
+};
 import { getSurfaceConfig } from '../physics/SurfaceMaterials';
 import { CameraMode } from '../camera/GoatCamera';
 import { SplitEvent } from '../world/Checkpoints';
@@ -34,11 +77,19 @@ export class Hud {
   private readonly controlsHintEl = document.getElementById('controls-hint')!;
   private readonly gpStatusEl = document.getElementById('gp-status');
   private readonly startTipsEl = document.getElementById('start-tips');
+  private readonly pauseTricksEl = document.getElementById('pause-tricks-list');
   private readonly startBtnEl = document.getElementById('start-btn');
   private readonly resumeBtnEl = document.getElementById('resume-btn');
   private readonly pauseRestartBtnEl = document.getElementById('pause-restart-btn');
   private readonly pauseCamBtnEl = document.getElementById('pause-cam-btn');
   private readonly finishRetryBtnEl = document.getElementById('finish-retry-btn');
+  private readonly bindPadHeadEl = document.getElementById('bind-pad-head');
+  private readonly bindPadDriveEl = document.getElementById('bind-pad-drive');
+  private readonly bindPadJumpEl = document.getElementById('bind-pad-jump');
+  private readonly bindPadPumpEl = document.getElementById('bind-pad-pump');
+  private readonly bindPadRamEl = document.getElementById('bind-pad-ram');
+  private readonly bindPadResetEl = document.getElementById('bind-pad-reset');
+  private readonly bindPadMiscEl = document.getElementById('bind-pad-misc');
 
   private readonly speedArcLen = 326.73; // 260° of r=72
   private readonly pumpArcLen = 263.2; // 260° of r=58
@@ -55,7 +106,8 @@ export class Hud {
   private lastSurface: SurfaceType | null = null;
   private currentCamMode: CameraMode = 'chase';
   private lastFpsDisplay = 0;
-  private activeDevice: InputDevice = 'keyboard';
+  private activeDevice: InputDevice | null = null;
+  private activeLayout: GamepadLayout = 'xbox';
   private lastGpConnected: boolean | null = null;
 
   constructor() {
@@ -175,35 +227,64 @@ export class Hud {
     this.bannerEl.classList.remove('visible');
   }
 
-  public setInputDevice(device: InputDevice, gamepadConnected: boolean): void {
-    if (this.gpStatusEl && gamepadConnected !== this.lastGpConnected) {
+  public setInputDevice(
+    device: InputDevice,
+    gamepadConnected: boolean,
+    layout: GamepadLayout,
+  ): void {
+    const g = PAD_GLYPHS[layout];
+    const layoutChanged = layout !== this.activeLayout;
+
+    if (this.gpStatusEl && (gamepadConnected !== this.lastGpConnected || layoutChanged)) {
       this.lastGpConnected = gamepadConnected;
       this.gpStatusEl.textContent = gamepadConnected
-        ? '● CONTROLLER CONNECTED'
+        ? `● ${g.label.toUpperCase()} CONTROLLER CONNECTED`
         : '○ NO CONTROLLER DETECTED (PLUG IN & PRESS ANY BUTTON)';
       this.gpStatusEl.style.color = gamepadConnected ? '#47ff9c' : 'rgba(215, 230, 250, 0.55)';
     }
 
-    if (device === this.activeDevice) return;
+    if (layoutChanged || this.activeDevice === null) {
+      this.activeLayout = layout;
+      if (this.bindPadHeadEl) this.bindPadHeadEl.textContent = g.label;
+      if (this.bindPadDriveEl) this.bindPadDriveEl.textContent = `${g.accel} / ${g.brake}`;
+      if (this.bindPadJumpEl) this.bindPadJumpEl.textContent = g.jump;
+      if (this.bindPadPumpEl) this.bindPadPumpEl.textContent = `${g.pump} / ${g.back}`;
+      if (this.bindPadRamEl) this.bindPadRamEl.textContent = g.ram;
+      if (this.bindPadResetEl) this.bindPadResetEl.textContent = `${g.restart} / ${g.cp}`;
+      if (this.bindPadMiscEl) this.bindPadMiscEl.textContent = `${g.cam} / ↑ / ${g.pause}`;
+    }
+
+    if (device === this.activeDevice && !layoutChanged) return;
     this.activeDevice = device;
+
     if (device === 'gamepad') {
       this.controlsHintEl.innerHTML = `
-        <div><kbd>RT</kbd>/<kbd>LT</kbd> Sprint &amp; Brake · <kbd>L-STICK</kbd> Carve · <kbd>A</kbd> Leap</div>
-        <div><kbd>RB</kbd>/<kbd>B</kbd> Pump / Dive · <kbd>X</kbd> Headbutt Ram · <kbd>↑</kbd> Bleat</div>
-        <div><kbd>Y</kbd> Restart · <kbd>LB</kbd> Checkpoint · <kbd>VIEW</kbd> Cam · <kbd>MENU</kbd> Pause</div>
+        <div><kbd>${g.accel}</kbd>/<kbd>${g.brake}</kbd> Sprint &amp; Brake · <kbd>L-STICK</kbd> Carve · <kbd>${g.jump}</kbd> Leap</div>
+        <div><kbd>${g.pump}</kbd>/<kbd>${g.back}</kbd> Pump / Dive · <kbd>${g.ram}</kbd> Headbutt Ram · <kbd>↑</kbd> Bleat</div>
+        <div><kbd>${g.restart}</kbd> Restart · <kbd>${g.cp}</kbd> Checkpoint · <kbd>${g.cam}</kbd> Cam · <kbd>${g.pause}</kbd> Pause</div>
       `;
       if (this.startTipsEl) {
         this.startTipsEl.innerHTML = `
-          <div><strong>Slope-Pumping (RB / B):</strong> Hold <strong>RB</strong> or <strong>B</strong> in mid-air to fast-dive onto steep roller backsides—landing crouched converts drop into a massive speed surge!</div>
-          <div><strong>Headbutt Ram (X) &amp; Wall-Kicks (A):</strong> Charge into rival herd goats with <strong>X</strong> to launch them flying for a speed boost, or tap <strong>A / &times;</strong> off steep cliffs to Wall-Kick.</div>
-          <div><strong>Cameras &amp; Instant Loop:</strong> Starts in Chase Cam; press <strong>VIEW</strong> for GoPro Action POV, <strong>Y</strong> for instant restart, or <strong>LB</strong> for last checkpoint.</div>
+          <div><strong>Slope-Pumping (${g.pump} / ${g.back}):</strong> Hold <strong>${g.pump}</strong> or <strong>${g.back}</strong> in mid-air to fast-dive onto steep roller backsides—landing crouched converts drop into a massive speed surge!</div>
+          <div><strong>Headbutt Ram (${g.ram}) &amp; Wall-Kicks (${g.jump}):</strong> Charge into rival herd goats with <strong>${g.ram}</strong> to launch them flying for a speed boost, or tap <strong>${g.jump}</strong> off steep cliffs to Wall-Kick.</div>
+          <div><strong>Cameras &amp; Instant Loop:</strong> Starts in Chase Cam; press <strong>${g.cam}</strong> for GoPro Action POV, <strong>${g.restart}</strong> for instant restart, or <strong>${g.cp}</strong> for last checkpoint.</div>
         `;
       }
-      if (this.startBtnEl) this.startBtnEl.textContent = 'Drop In (Press A / Menu)';
-      if (this.resumeBtnEl) this.resumeBtnEl.textContent = 'Resume (Menu / B)';
-      if (this.pauseRestartBtnEl) this.pauseRestartBtnEl.textContent = 'Restart Run (Y)';
-      if (this.pauseCamBtnEl) this.pauseCamBtnEl.textContent = 'Toggle Camera (View)';
-      if (this.finishRetryBtnEl) this.finishRetryBtnEl.textContent = 'Race Your Ghost (A / Y)';
+      if (this.pauseTricksEl) {
+        this.pauseTricksEl.innerHTML = `
+          <div><strong>Headbutt Ram:</strong> Tap <strong>${g.ram}</strong> to lunge horns-first into rival herd goats—blasts them tumbling off the cliff for a +18 km/h boost!</div>
+          <div><strong>Slope-Pump:</strong> Hold <strong>${g.pump} / ${g.back}</strong> while descending steep slopes (&ge;15&deg;) or diving from air for a huge speed surge.</div>
+          <div><strong>Wall-Kick:</strong> Carve onto steep rock (&ge;40&deg;) at speed and tap <strong>${g.jump}</strong> to kick off with a boost.</div>
+          <div><strong>Scree &amp; Snow:</strong> Carve wide drift arcs on dark loose shale &amp; snow for peak downhill speed.</div>
+        `;
+      }
+      if (this.startBtnEl) this.startBtnEl.textContent = `Drop In (Press ${g.jump} / ${g.pause})`;
+      if (this.resumeBtnEl) this.resumeBtnEl.textContent = `Resume (${g.pause} / ${g.back})`;
+      if (this.pauseRestartBtnEl) this.pauseRestartBtnEl.textContent = `Restart Run (${g.restart})`;
+      if (this.pauseCamBtnEl) this.pauseCamBtnEl.textContent = `Toggle Camera (${g.cam})`;
+      if (this.finishRetryBtnEl) {
+        this.finishRetryBtnEl.textContent = `Race Your Ghost (${g.jump} / ${g.restart})`;
+      }
     } else {
       this.controlsHintEl.innerHTML = `
         <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Sprint &amp; Carve · <kbd>SPACE</kbd> Leap</div>
@@ -215,6 +296,14 @@ export class Hud {
           <div><strong>Slope-Pumping (SHIFT):</strong> Hold <strong>SHIFT</strong> in mid-air to fast-dive onto steep roller backsides—landing crouched converts drop into a massive speed surge!</div>
           <div><strong>Headbutt Ram (F) &amp; Wall-Kicks (SPACE):</strong> Ram rival herd goats with <strong>F</strong> to send them flying for a speed boost, or tap <strong>SPACE</strong> off steep cliffs to Wall-Kick.</div>
           <div><strong>Cameras &amp; Instant Loop:</strong> Starts in Chase Cam; press <strong>C</strong> for GoPro Action POV, <strong>R</strong> for instant restart, or <strong>BKSP</strong> for last checkpoint.</div>
+        `;
+      }
+      if (this.pauseTricksEl) {
+        this.pauseTricksEl.innerHTML = `
+          <div><strong>Headbutt Ram:</strong> Tap <strong>F</strong> to lunge horns-first into rival herd goats—blasts them tumbling off the cliff for a +18 km/h boost!</div>
+          <div><strong>Slope-Pump:</strong> Hold <strong>SHIFT</strong> while descending steep slopes (&ge;15&deg;) or diving from air for a huge speed surge.</div>
+          <div><strong>Wall-Kick:</strong> Carve onto steep rock (&ge;40&deg;) at speed and tap <strong>SPACE</strong> to kick off with a boost.</div>
+          <div><strong>Scree &amp; Snow:</strong> Carve wide drift arcs on dark loose shale &amp; snow for peak downhill speed.</div>
         `;
       }
       if (this.startBtnEl) this.startBtnEl.textContent = 'Drop In (Click or Press Space)';
@@ -250,8 +339,9 @@ export class Hud {
     }
 
     const isPad = this.activeDevice === 'gamepad';
-    const jumpKey = isPad ? 'A' : 'SPACE';
-    const pumpKey = isPad ? 'RB/B' : 'SHIFT';
+    const g = PAD_GLYPHS[this.activeLayout];
+    const jumpKey = isPad ? g.jump : 'SPACE';
+    const pumpKey = isPad ? `${g.pump}/${g.back}` : 'SHIFT';
 
     const wallKickReady =
       snap.wallRunning || (snap.grounded && snap.slopeDeg >= 40 && snap.speed >= 6.0);

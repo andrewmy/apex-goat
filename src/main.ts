@@ -332,7 +332,7 @@ class ApexGoatGame {
     }
 
     const input = this.input.poll();
-    this.hud.setInputDevice(input.device, input.gamepadConnected);
+    this.hud.setInputDevice(input.device, input.gamepadConnected, input.gamepadLayout);
 
     // Allow Gamepad A/Cross or Start to drop straight in from the Start overlay!
     if (!this.started && (input.jumpJustPressed || input.pauseJustPressed)) {

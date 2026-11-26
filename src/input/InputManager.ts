@@ -1,8 +1,23 @@
-import { InputDevice, InputState } from '../types';
+import { GamepadLayout, InputDevice, InputState } from '../types';
+
+function detectGamepadLayout(padId: string): GamepadLayout {
+  const id = padId.toLowerCase();
+  if (
+    id.includes('dualsense') ||
+    id.includes('dualshock') ||
+    id.includes('playstation') ||
+    id.includes('sony') ||
+    id.includes('054c')
+  ) {
+    return 'playstation';
+  }
+  return 'xbox';
+}
 
 export class InputManager {
   private keys = new Set<string>();
   private activeDevice: InputDevice = 'keyboard';
+  private gamepadLayout: GamepadLayout = 'xbox';
   private userTouchedKeyboard = false;
   private rumblePriorityUntil = 0;
   private lastScreeRumbleAt = 0;
@@ -106,6 +121,7 @@ export class InputManager {
     for (const pad of pads) {
       if (!pad || !pad.connected) continue;
       gamepadConnected = true;
+      this.gamepadLayout = detectGamepadLayout(pad.id);
       // If a controller is already connected on load before any keyboard input, default UI to gamepad!
       if (!this.userTouchedKeyboard) {
         this.activeDevice = 'gamepad';
@@ -185,6 +201,7 @@ export class InputManager {
     return {
       device: this.activeDevice,
       gamepadConnected,
+      gamepadLayout: this.gamepadLayout,
       throttle,
       steer,
       jumpHeld,
@@ -235,7 +252,9 @@ export class InputManager {
               },
             ) => Promise<string>;
           };
-          hapticActuators?: Array<{ pulse?: (value: number, duration: number) => Promise<boolean> }>;
+          hapticActuators?: Array<{
+            pulse?: (value: number, duration: number) => Promise<boolean>;
+          }>;
         }
       ).vibrationActuator;
 
@@ -257,7 +276,9 @@ export class InputManager {
       // Fallback for older Safari / Firefox hapticActuators
       const legacy = (
         pad as Gamepad & {
-          hapticActuators?: Array<{ pulse?: (value: number, duration: number) => Promise<boolean> }>;
+          hapticActuators?: Array<{
+            pulse?: (value: number, duration: number) => Promise<boolean>;
+          }>;
         }
       ).hapticActuators;
       if (legacy && legacy[0] && typeof legacy[0].pulse === 'function') {

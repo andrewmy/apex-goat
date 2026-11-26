@@ -34,10 +34,12 @@ export interface SurfaceConfig {
 }
 
 export type InputDevice = 'keyboard' | 'gamepad';
+export type GamepadLayout = 'xbox' | 'playstation';
 
 export interface InputState {
   device: InputDevice;
   gamepadConnected: boolean;
+  gamepadLayout: GamepadLayout;
   throttle: number; // -1..1
   steer: number; // -1..1 (-1 left, +1 right)
   jumpHeld: boolean;

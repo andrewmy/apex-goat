@@ -821,7 +821,7 @@
         </div>
 
         <div class="pause-panel" id="pause-panel-tricks">
-          <div class="modal-tips" style="margin-top: 0">
+          <div class="modal-tips" id="pause-tricks-list" style="margin-top: 0">
             <div>
               <strong>Headbutt Ram:</strong> Tap <strong>F / X</strong> to lunge horns-first into
               rival herd goats—blasts them tumbling off the cliff for a +18 km/h boost!
@@ -845,11 +845,11 @@
           <div class="bind-grid">
             <div class="bind-head">Action</div>
             <div class="bind-head" style="text-align: right">Keyboard</div>
-            <div class="bind-head" style="text-align: right">Controller</div>
+            <div class="bind-head" id="bind-pad-head" style="text-align: right">Controller</div>
 
             <div class="bind-act">Sprint / Brake</div>
             <div class="bind-key">W / S</div>
-            <div class="bind-pad">RT / LT</div>
+            <div class="bind-pad" id="bind-pad-drive">RT / LT</div>
 
             <div class="bind-act">Carve / Steer</div>
             <div class="bind-key">A / D</div>
@@ -857,23 +857,23 @@
 
             <div class="bind-act">Leap / Wall-Kick</div>
             <div class="bind-key">SPACE</div>
-            <div class="bind-pad">A / &times;</div>
+            <div class="bind-pad" id="bind-pad-jump">A</div>
 
             <div class="bind-act">Pump / Dive / Grip</div>
             <div class="bind-key">SHIFT</div>
-            <div class="bind-pad">RB / B</div>
+            <div class="bind-pad" id="bind-pad-pump">RB / B</div>
 
             <div class="bind-act">Headbutt Ram</div>
             <div class="bind-key">F</div>
-            <div class="bind-pad">X / &#9633;</div>
+            <div class="bind-pad" id="bind-pad-ram">X</div>
 
             <div class="bind-act">Restart / Checkpoint</div>
             <div class="bind-key">R / BKSP</div>
-            <div class="bind-pad">Y / LB</div>
+            <div class="bind-pad" id="bind-pad-reset">Y / LB</div>
 
             <div class="bind-act">Camera / Bleat / Pause</div>
             <div class="bind-key">C / B / ESC</div>
-            <div class="bind-pad">VIEW / &uarr; / MENU</div>
+            <div class="bind-pad" id="bind-pad-misc">VIEW / &uarr; / MENU</div>
           </div>
           <div class="gp-status" id="gp-status">
             ○ NO CONTROLLER DETECTED (PLUG IN &amp; PRESS ANY BUTTON)

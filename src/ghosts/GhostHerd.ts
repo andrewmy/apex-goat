@@ -83,7 +83,7 @@ export class GhostHerd {
     }> = [
       // Immediate start-ridge pack (Gold / Silver pacers right in front of you!)
       { coat: 0xf7f5f0, accent: 0xded9ce, startLeadT: 0.014, durationSec: 32.0, lat: -1.4 },
-      { coat: 0xeae2d2, accent: 0xd5c8b4, startLeadT: 0.020, durationSec: 34.5, lat: 1.4 },
+      { coat: 0xeae2d2, accent: 0xd5c8b4, startLeadT: 0.02, durationSec: 34.5, lat: 1.4 },
       { coat: 0xf5f2ea, accent: 0xe3dcd0, startLeadT: 0.009, durationSec: 37.0, lat: -0.2 },
       { coat: 0xe3d8c5, accent: 0xc9bca6, startLeadT: 0.006, durationSec: 40.5, lat: 2.2 },
     ];
@@ -266,7 +266,12 @@ export class GhostHerd {
           if (vn < 0) {
             mate.knockVel.addScaledVector(hit.face.normal, -1.45 * vn);
             mate.knockVel.multiplyScalar(0.75);
-            particles.emitBurst(hit.point, mate.knockVel.clone().multiplyScalar(0.25), mate.currentSurface, 6);
+            particles.emitBurst(
+              hit.point,
+              mate.knockVel.clone().multiplyScalar(0.25),
+              mate.currentSurface,
+              6,
+            );
           }
         }
 
