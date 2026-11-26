@@ -4,6 +4,8 @@ High-speed 3D alpine cliff descent prototype built with TypeScript, Vite, and Th
 
 https://andrewmy.github.io/apex-goat/
 
+![APEX GOAT GoPro POV mid-backflip at 187 km/h during a ×4 combo and 286 km/h rockslide](docs/screenshot.png)
+
 ## Controls
 
 Supports both **Keyboard** and **Controller** with automatic HUD glyph switching and dual-rumble haptic feedback.

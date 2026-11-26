@@ -368,8 +368,8 @@
         color: #ff5b5b;
       }
       .combo-wrap {
-        margin-top: 8px;
-        display: flex;
+        margin-top: 6px;
+        display: none;
         flex-direction: column;
         align-items: center;
         gap: 4px;
@@ -380,6 +380,7 @@
           transform 0.16s ease;
       }
       .combo-wrap.visible {
+        display: flex;
         opacity: 1;
         transform: translateY(0);
       }
@@ -502,13 +503,11 @@
       }
       /* Crimson Alpine Hazard Warning Banner */
       .hazard-warning {
-        position: fixed;
-        top: 112px;
-        left: 50%;
-        transform: translateX(-50%) translateY(-6px);
-        min-width: 260px;
-        max-width: min(390px, 88vw);
-        padding: 8px 18px 9px;
+        display: none;
+        margin-top: 6px;
+        min-width: 248px;
+        max-width: min(380px, 88vw);
+        padding: 7px 16px 8px;
         border-radius: 14px;
         background: rgba(34, 10, 14, 0.72);
         backdrop-filter: blur(12px);
@@ -527,8 +526,8 @@
           transform 0.16s ease;
       }
       .hazard-warning.visible {
+        display: block;
         opacity: 1;
-        transform: translateX(-50%) translateY(0);
         animation: hazardWarnPulse 0.95s ease-in-out infinite;
       }
       .hazard-warn-title {
@@ -696,10 +695,8 @@
       }
 
       .hud-center-banner {
-        position: fixed;
-        top: 24%;
-        left: 50%;
-        transform: translateX(-50%);
+        display: none;
+        margin-top: 8px;
         text-align: center;
         pointer-events: none;
         opacity: 0;
@@ -708,8 +705,35 @@
           transform 0.18s ease;
       }
       .hud-center-banner.visible {
+        display: block;
         opacity: 1;
-        transform: translateX(-50%) scale(1);
+      }
+      @media (max-height: 620px) {
+        .timer-main {
+          font-size: 32px;
+        }
+        .combo-pill {
+          padding: 4px 12px 5px;
+        }
+        .hazard-warning {
+          margin-top: 5px;
+          padding: 5px 14px 6px;
+        }
+        .hazard-warn-title {
+          font-size: 12px;
+        }
+        .hazard-warn-sub {
+          font-size: 9.5px;
+        }
+        .hud-center-banner {
+          margin-top: 5px;
+        }
+        .banner-title {
+          font-size: 28px;
+        }
+        .banner-sub {
+          font-size: 12px;
+        }
       }
       .banner-title {
         font-size: 38px;
@@ -2001,7 +2025,6 @@
           display: flex;
         }
         .hazard-warning {
-          top: 108px;
           backdrop-filter: none;
           background: rgba(34, 10, 14, 0.88);
           padding: 7px 13px 8px;
@@ -2053,7 +2076,6 @@
           padding: 5px 12px;
         }
         .hud-center-banner {
-          top: 29%;
           width: 90%;
         }
         .banner-title {
@@ -2239,6 +2261,16 @@
               <div class="combo-bar"><div class="combo-bar-fill" id="combo-bar-fill"></div></div>
             </div>
           </div>
+
+          <div class="hazard-warning" id="hazard-warning" role="alert" aria-live="assertive">
+            <div class="hazard-warn-title" id="hazard-warn-title">⚠ ROCKSLIDE WARNING</div>
+            <div class="hazard-warn-sub" id="hazard-warn-sub">DODGE LATERALLY OR LEAP!</div>
+          </div>
+
+          <div class="hud-center-banner" id="center-banner">
+            <div class="banner-title" id="banner-title">CHECKPOINT</div>
+            <div class="banner-sub" id="banner-sub">-0.42s AHEAD</div>
+          </div>
         </div>
 
         <div class="hud-top-right">
@@ -2291,16 +2323,6 @@
             ⛰ SLIDE
           </button>
         </div>
-      </div>
-
-      <div class="hazard-warning" id="hazard-warning" role="alert" aria-live="assertive">
-        <div class="hazard-warn-title" id="hazard-warn-title">⚠ ROCKSLIDE WARNING</div>
-        <div class="hazard-warn-sub" id="hazard-warn-sub">DODGE LATERALLY OR LEAP!</div>
-      </div>
-
-      <div class="hud-center-banner" id="center-banner">
-        <div class="banner-title" id="banner-title">CHECKPOINT</div>
-        <div class="banner-sub" id="banner-sub">-0.42s AHEAD</div>
       </div>
 
       <div class="wipeout-toast" id="wipeout-toast" role="status" aria-live="polite">
