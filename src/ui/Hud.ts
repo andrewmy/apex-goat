@@ -1,4 +1,5 @@
 import { GamepadLayout, GoatPhysicsSnapshot, InputDevice, SurfaceType } from '../types';
+import { ComboSnapshot } from '../scoring/ComboTracker';
 
 interface PadGlyphs {
   label: string;
@@ -90,6 +91,13 @@ export class Hud {
   private readonly bindPadRamEl = document.getElementById('bind-pad-ram');
   private readonly bindPadResetEl = document.getElementById('bind-pad-reset');
   private readonly bindPadMiscEl = document.getElementById('bind-pad-misc');
+  private readonly comboWrapEl = document.getElementById('combo-wrap')!;
+  private readonly comboPillEl = document.getElementById('combo-pill')!;
+  private readonly comboMultEl = document.getElementById('combo-mult')!;
+  private readonly comboPtsEl = document.getElementById('combo-pts')!;
+  private readonly comboTotalEl = document.getElementById('combo-total')!;
+  private readonly comboChainEl = document.getElementById('combo-chain')!;
+  private readonly comboBarFillEl = document.getElementById('combo-bar-fill')!;
 
   private readonly speedArcLen = 326.73; // 260° of r=72
   private readonly pumpArcLen = 263.2; // 260° of r=58
@@ -419,5 +427,51 @@ export class Hud {
     this.speedVigEl.style.opacity = String(
       Math.min(1, speedRush * 0.85 + snap.pumpBoostFlash * 0.45),
     );
+  }
+
+  public updateCombo(combo: ComboSnapshot): void {
+    const showBankFlash = combo.lastEvent === 'bank' && combo.eventAge < 1.35;
+    const showBustFlash = combo.lastEvent === 'bust' && combo.eventAge < 1.15;
+    const isActive = combo.multiplier > 0;
+    const visible = isActive || combo.totalScore > 0 || showBankFlash || showBustFlash;
+
+    this.comboWrapEl.classList.toggle('visible', visible);
+    if (!visible) return;
+
+    this.comboPillEl.classList.toggle('banked', showBankFlash && !isActive);
+    this.comboPillEl.classList.toggle('busted', showBustFlash && !isActive);
+
+    if (isActive) {
+      this.comboMultEl.textContent = `×${combo.multiplier}`;
+      this.comboMultEl.style.color = combo.multiplier >= 4 ? '#47ff9c' : '#ffd447';
+      this.comboPtsEl.textContent = `+${(combo.activePoints * combo.multiplier).toLocaleString()}`;
+      this.comboChainEl.textContent = combo.recentTricks.join(' → ');
+      this.comboBarFillEl.style.width = `${Math.round(combo.timeRemainingFrac * 100)}%`;
+    } else if (showBankFlash) {
+      this.comboMultEl.textContent = 'BANKED';
+      this.comboMultEl.style.color = '#47ff9c';
+      this.comboPtsEl.textContent = `+${combo.lastBankedAmount.toLocaleString()}`;
+      this.comboChainEl.textContent = 'CLEAN CHAIN!';
+      this.comboBarFillEl.style.width = '100%';
+    } else if (showBustFlash) {
+      this.comboMultEl.textContent = 'BUSTED';
+      this.comboMultEl.style.color = '#ff6b6b';
+      this.comboPtsEl.textContent = 'COMBO LOST';
+      this.comboChainEl.textContent = 'WIPEOUT BROKE THE CHAIN';
+      this.comboBarFillEl.style.width = '0%';
+    } else {
+      this.comboMultEl.textContent = 'STYLE';
+      this.comboMultEl.style.color = '#74f0ff';
+      this.comboPtsEl.textContent = combo.totalScore.toLocaleString();
+      this.comboChainEl.textContent = '';
+      this.comboBarFillEl.style.width = '0%';
+    }
+
+    this.comboTotalEl.textContent =
+      isActive || showBankFlash || showBustFlash
+        ? `STYLE ${combo.totalScore.toLocaleString()}`
+        : combo.bestStyle > 0
+          ? `BEST ${combo.bestStyle.toLocaleString()}`
+          : '';
   }
 }

@@ -269,6 +269,66 @@ export class GoatAudio {
     });
   }
 
+  /** Rising musical ping as combo multiplier climbs (x2, x3, x4...) */
+  public playComboStep(multiplier: number): void {
+    if (!this.initialized || !this.ctx || !this.masterGain || multiplier < 2) return;
+    const now = this.ctx.currentTime;
+    const semitone = Math.min(14, multiplier - 2);
+    const freq = 440 * Math.pow(2, semitone / 12);
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.12, now + 0.09);
+    gain.gain.setValueAtTime(0.11, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(now);
+    osc.stop(now + 0.14);
+  }
+
+  /** Warm banking chord when a trick chain locks into total Style Score */
+  public playComboBank(): void {
+    if (!this.initialized || !this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    [523.25, 659.25, 783.99].forEach((freq, idx) => {
+      if (!this.ctx || !this.masterGain) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      const t0 = now + idx * 0.03;
+      osc.frequency.setValueAtTime(freq, t0);
+      gain.gain.setValueAtTime(0.1, t0);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.24);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t0);
+      osc.stop(t0 + 0.26);
+    });
+  }
+
+  /** Quick descending womp when a wipeout busts an unbanked combo */
+  public playComboBust(): void {
+    if (!this.initialized || !this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 650;
+    osc.frequency.setValueAtTime(240, now);
+    osc.frequency.exponentialRampToValueAtTime(95, now + 0.24);
+    gain.gain.setValueAtTime(0.14, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+    osc.connect(lp);
+    lp.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(now);
+    osc.stop(now + 0.27);
+  }
+
   public playCheckpoint(isFinish: boolean, ahead: boolean): void {
     if (!this.initialized || !this.ctx || !this.masterGain) return;
     const now = this.ctx.currentTime;

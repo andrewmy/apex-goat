@@ -13,6 +13,7 @@ import { GhostRecorder } from './ghosts/GhostRecorder';
 import { GhostHerd } from './ghosts/GhostHerd';
 import { Hud, formatTime } from './ui/Hud';
 import { BuildBadge } from './ui/BuildBadge';
+import { ComboTracker } from './scoring/ComboTracker';
 import { GoatPhysicsSnapshot, SurfaceType } from './types';
 
 function createEmptySnapshot(): GoatPhysicsSnapshot {
@@ -67,6 +68,7 @@ class ApexGoatGame {
   private readonly recorder: GhostRecorder;
   private readonly herd: GhostHerd;
   private readonly hud: Hud;
+  private readonly combo: ComboTracker;
   public readonly buildBadge: BuildBadge;
 
   private readonly snapshot = createEmptySnapshot();
@@ -118,6 +120,7 @@ class ApexGoatGame {
     this.recorder = new GhostRecorder();
     this.herd = new GhostHerd(this.scene, this.course);
     this.hud = new Hud();
+    this.combo = new ComboTracker();
     this.buildBadge = new BuildBadge();
 
     this.hud.setPersonalBest(this.recorder.personalBest?.totalTime ?? null);
@@ -220,6 +223,8 @@ class ApexGoatGame {
     medal: string,
     isNewPb: boolean,
     deltaVsPb: number | null,
+    styleScore: number,
+    isNewBestStyle: boolean,
   ): void {
     const timeEl = document.getElementById('fin-time-title')!;
     const medalLabelEl = document.getElementById('fin-medal-label')!;
@@ -227,9 +232,14 @@ class ApexGoatGame {
     const kickerEl = document.getElementById('fin-medal-kicker')!;
     const noteEl = document.getElementById('fin-pb-note')!;
     const speedEl = document.getElementById('fin-speed-val')!;
+    const styleLabelEl = document.getElementById('fin-style-label')!;
+    const styleValEl = document.getElementById('fin-style-val')!;
 
     timeEl.textContent = formatTime(totalTime);
     speedEl.textContent = `${this.maxRunSpeedKmh} KM/H`;
+    styleValEl.textContent = styleScore.toLocaleString();
+    styleLabelEl.textContent = isNewBestStyle ? 'NEW BEST STYLE!' : 'STYLE';
+    styleValEl.style.color = isNewBestStyle ? '#47ff9c' : '#74f0ff';
 
     if (medal === 'NONE') {
       const slowRanks =
@@ -294,8 +304,20 @@ class ApexGoatGame {
     }
     this.recorder.reset();
     this.herd.reset();
+    this.combo.reset();
     this.goatCam.reset();
     this.hud.clearSplitDelta();
+  }
+
+  /** Registers a trick into the live Combo Chain, plays rising chime, and awards flow boost at ×3+! */
+  private scoreTrick(label: string, points: number): number {
+    const mult = this.combo.addTrick(label, points);
+    this.audio.playComboStep(mult);
+    // Flow reward: chaining ×3+ tricks gives a tiny forward adrenaline kick!
+    if (mult >= 3) {
+      this.controller.velocity.addScaledVector(this.controller.forward, 1.35);
+    }
+    return mult;
   }
 
   private resetToCheckpoint(): void {
@@ -380,19 +402,23 @@ class ApexGoatGame {
           this.audio.playApexBleat();
           this.goatCam.addShake(0.24);
           this.input.rumble(0.45, 0.7, 110);
+          const mult = this.scoreTrick('APEX BLEAT', 180);
           const airTag = this.controller.airTime > 0.7 ? 'SKY GOAT!' : 'BAAA-NZA!';
-          this.hud.showBanner('APEX BLEAT!', `${airTag} +BOOST`, 950);
+          this.hud.showBanner('APEX BLEAT!', `${airTag} · ×${mult} COMBO`, 950);
         } else if (bleatType === 'herd-taunt') {
           this.audio.playApexBleat();
           this.input.rumble(0.35, 0.55, 95);
-          // Staggered chorus of startled herd goats bleating back!
+          const mult = this.scoreTrick(
+            startled > 1 ? `HERD TAUNT ×${startled}` : 'HERD TAUNT',
+            150 * Math.min(4, startled),
+          );
           const chorusCount = Math.min(3, startled);
           for (let i = 0; i < chorusCount; i++) {
             window.setTimeout(() => this.audio.playBleat(1.18 + Math.random() * 0.25), 85 + i * 75);
           }
           this.hud.showBanner(
             startled > 1 ? `HERD TAUNT ×${startled}!` : 'HERD TAUNT!',
-            'GOATS SCATTERED · +BOOST',
+            `SCATTERED · ×${mult} COMBO`,
             900,
           );
         } else {
@@ -437,7 +463,8 @@ class ApexGoatGame {
             if (ev.wallKick) {
               this.goatCam.addShake(0.35);
               this.input.rumble(0.5, 0.72, 100);
-              this.hud.showBanner('WALL KICK!', '+BOOST', 650);
+              const mult = this.scoreTrick('WALL KICK', 220);
+              this.hud.showBanner('WALL KICK!', `×${mult} COMBO · +BOOST`, 650);
             }
           },
           onLand: (ev) => {
@@ -457,6 +484,9 @@ class ApexGoatGame {
             if (ev.bailed) {
               this.input.rumble(0.95, 0.8, 240);
               this.audio.playBleat();
+              if (this.combo.bust()) {
+                this.audio.playComboBust();
+              }
               this.hud.showBanner(
                 ev.trickBail ? 'TRICK BAIL!' : 'WIPEOUT!',
                 ev.trickBail ? 'UNDER-ROTATED LANDING' : 'RESPAWNING...',
@@ -465,14 +495,20 @@ class ApexGoatGame {
             } else if (ev.trickLabel) {
               this.audio.playTrickStomp(ev.trickCount);
               this.input.rumble(0.82, 0.78, 160);
+              const cleanLabel = ev.trickLabel.replace(/!$/, '');
+              let mult = this.scoreTrick(cleanLabel, 350 * ev.trickCount);
+              if (ev.pumped) {
+                mult = this.scoreTrick('SLOPE PUMP', 200 + ev.pumpGainKmh * 3);
+              }
               const totalGain = ev.trickBoostKmh + ev.pumpGainKmh;
               const sub = ev.pumped
-                ? `STOMP + SLOPE PUMP (+${totalGain} KM/H)`
-                : `CLEAN STOMP · +${ev.trickBoostKmh} KM/H`;
+                ? `STOMP + PUMP (+${totalGain} KM/H) · ×${mult}`
+                : `CLEAN STOMP · +${ev.trickBoostKmh} KM/H · ×${mult}`;
               this.hud.showBanner(ev.trickLabel, sub, 1100);
             } else if (ev.pumped) {
               this.input.rumble(0.75, 0.6, 145);
-              this.hud.showBanner(`SLOPE PUMP +${ev.pumpGainKmh} KM/H`, 'CLEAN TRANSITION!', 850);
+              const mult = this.scoreTrick('SLOPE PUMP', 200 + ev.pumpGainKmh * 3);
+              this.hud.showBanner(`SLOPE PUMP +${ev.pumpGainKmh} KM/H`, `×${mult} COMBO`, 850);
             } else if (ev.impactSpeed > 6) {
               const str = Math.min(0.62, ev.impactSpeed / 26);
               this.input.rumble(str, str * 0.65, 85);
@@ -481,6 +517,9 @@ class ApexGoatGame {
           onOutOfBounds: () => {
             this.input.rumble(0.85, 0.6, 200);
             this.audio.playBleat();
+            if (this.combo.bust()) {
+              this.audio.playComboBust();
+            }
             this.hud.showBanner('OFF CLIFF', 'SNAPPING BACK TO TRACK', 650);
           },
         });
@@ -520,9 +559,15 @@ class ApexGoatGame {
             }
           }
           if (ramCountThisTick > 1) {
-            this.hud.showBanner(`MULTI-RAM ×${ramCountThisTick}!`, '+MASSIVE BOOST', 950);
+            const mult = this.scoreTrick(`MULTI-RAM ×${ramCountThisTick}`, 250 * ramCountThisTick);
+            this.hud.showBanner(
+              `MULTI-RAM ×${ramCountThisTick}!`,
+              `×${mult} COMBO · +MASSIVE BOOST`,
+              950,
+            );
           } else if (ramCountThisTick === 1) {
-            this.hud.showBanner('HEADBUTT RAM!', '+18 KM/H BOOST', 850);
+            const mult = this.scoreTrick('HEADBUTT RAM', 250);
+            this.hud.showBanner('HEADBUTT RAM!', `×${mult} COMBO · +18 KM/H`, 850);
           }
         }
 
@@ -539,10 +584,18 @@ class ApexGoatGame {
             if (isNewPb) {
               this.hud.setPersonalBest(split.splitTime);
             }
+            const { totalScore, isNewBestStyle } = this.combo.finalizeRun();
             // Proper Finish State: smooth goat deceleration + scenic Victory Orbit + Results Card!
             this.controller.enterFinishState();
             this.goatCam.victoryOrbit = true;
-            this.showFinishCard(split.splitTime, split.medal ?? 'NONE', isNewPb, split.deltaVsPb);
+            this.showFinishCard(
+              split.splitTime,
+              split.medal ?? 'NONE',
+              isNewPb,
+              split.deltaVsPb,
+              totalScore,
+              isNewBestStyle,
+            );
           }
           const ahead = split.deltaVsPb === null || split.deltaVsPb <= 0;
           this.audio.playCheckpoint(split.isFinish, ahead);
@@ -612,6 +665,15 @@ class ApexGoatGame {
         this.input.rumble(0.05 * spdNorm, 0.18 * spdNorm, 85, true);
       }
     }
+    // Tick combo decay (paused mid-air or while actively slope-pumping so big lines stay alive!)
+    if (this.started && !this.checkpoints.runFinished) {
+      const holdDecay = !this.snapshot.grounded || this.snapshot.pumpingNow;
+      const { bankedAmount } = this.combo.update(frameDt, holdDecay);
+      if (bankedAmount > 0) {
+        this.audio.playComboBank();
+      }
+    }
+
     this.hud.update(
       this.checkpoints.runTime,
       this.checkpoints.nextIndex,
@@ -619,6 +681,7 @@ class ApexGoatGame {
       this.snapshot,
       this.currentFps,
     );
+    this.hud.updateCombo(this.combo.getSnapshot());
 
     this.renderer.render(this.scene, this.goatCam.camera);
   };

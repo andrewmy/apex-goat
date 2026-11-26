@@ -143,6 +143,84 @@
       .delta-slow {
         color: #ff5b5b;
       }
+      .combo-wrap {
+        margin-top: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        opacity: 0;
+        transform: translateY(-4px);
+        transition:
+          opacity 0.16s ease,
+          transform 0.16s ease;
+      }
+      .combo-wrap.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .combo-pill {
+        background: rgba(8, 12, 20, 0.72);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 212, 71, 0.35);
+        border-radius: 12px;
+        padding: 6px 14px 7px;
+        min-width: 210px;
+        text-align: center;
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38);
+      }
+      .combo-pill.banked {
+        border-color: rgba(71, 255, 156, 0.65);
+      }
+      .combo-pill.busted {
+        border-color: rgba(255, 91, 91, 0.75);
+      }
+      .combo-top {
+        display: flex;
+        justify-content: center;
+        align-items: baseline;
+        gap: 8px;
+        font-variant-numeric: tabular-nums;
+      }
+      .combo-mult {
+        font-size: 18px;
+        font-weight: 900;
+        color: #ffd447;
+        letter-spacing: -0.02em;
+      }
+      .combo-pts {
+        font-size: 15px;
+        font-weight: 800;
+        color: #f4f8ff;
+      }
+      .combo-style-total {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: rgba(185, 224, 255, 0.72);
+      }
+      .combo-chain {
+        margin-top: 2px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #7ef2ff;
+        white-space: nowrap;
+      }
+      .combo-bar {
+        margin-top: 5px;
+        height: 3.5px;
+        background: rgba(255, 255, 255, 0.14);
+        border-radius: 99px;
+        overflow: hidden;
+      }
+      .combo-bar-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #5ff3ff, #ffd447, #47ff9c);
+      }
       .medals-pill {
         background: rgba(8, 12, 20, 0.55);
         backdrop-filter: blur(8px);
@@ -566,8 +644,8 @@
       .finish-stats {
         margin-top: 16px;
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 9px;
       }
       .finish-stat {
         background: rgba(255, 255, 255, 0.06);
@@ -631,14 +709,28 @@
           <span id="cam-label">CHASE CAM · -- FPS</span>
         </div>
 
-        <div class="timer-block">
-          <div class="timer-main" id="timer-display">00:00.00</div>
-          <div class="timer-meta">
-            <span id="cp-display">CP 0 / 6</span>
-            <span>·</span>
-            <span id="alt-display">ALT 2450m</span>
+        <div class="timer-col" style="display: flex; flex-direction: column; align-items: center">
+          <div class="timer-block">
+            <div class="timer-main" id="timer-display">00:00.00</div>
+            <div class="timer-meta">
+              <span id="cp-display">CP 0 / 6</span>
+              <span>·</span>
+              <span id="alt-display">ALT 2450m</span>
+            </div>
+            <div class="split-delta" id="split-delta"></div>
           </div>
-          <div class="split-delta" id="split-delta"></div>
+
+          <div class="combo-wrap" id="combo-wrap">
+            <div class="combo-pill" id="combo-pill">
+              <div class="combo-top">
+                <span class="combo-mult" id="combo-mult">×1</span>
+                <span class="combo-pts" id="combo-pts">0</span>
+                <span class="combo-style-total" id="combo-total">STYLE 0</span>
+              </div>
+              <div class="combo-chain" id="combo-chain"></div>
+              <div class="combo-bar"><div class="combo-bar-fill" id="combo-bar-fill"></div></div>
+            </div>
+          </div>
         </div>
 
         <div class="medals-pill">
@@ -903,6 +995,10 @@
           <div class="finish-stat">
             <div class="finish-stat-label">TOP SPEED</div>
             <div class="finish-stat-val" id="fin-speed-val">148 KM/H</div>
+          </div>
+          <div class="finish-stat">
+            <div class="finish-stat-label" id="fin-style-label">STYLE</div>
+            <div class="finish-stat-val" id="fin-style-val" style="color: #74f0ff">0</div>
           </div>
         </div>
         <div class="pause-actions">
