@@ -57,6 +57,7 @@ export interface InputState {
   backJustPressed: boolean;
   muteToggleJustPressed: boolean;
   helpToggleJustPressed: boolean;
+  sceneCycleJustPressed: boolean;
 }
 
 export interface GoatPhysicsSnapshot {

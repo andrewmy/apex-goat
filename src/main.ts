@@ -4,6 +4,12 @@ import { isTouchCapableDevice } from './input/TouchControls';
 import { AlpineEnvironment } from './world/Environment';
 import { AlpineCourse } from './world/AlpineCourse';
 import { CheckpointManager } from './world/Checkpoints';
+import {
+  getNextScenePresetId,
+  loadSavedScenePresetId,
+  SCENE_STORAGE_KEY,
+  ScenePresetId,
+} from './world/WeatherPresets';
 import { GoatController } from './physics/GoatController';
 import { GOAT_COAT_PRESETS, GoatCoatId, GoatRig } from './goat/GoatRig';
 import { QuadrupedIK } from './goat/QuadrupedIK';
@@ -99,7 +105,9 @@ class ApexGoatGame {
   private rotateOverlayEl!: HTMLElement;
   private togglePauseTab!: () => void;
   private syncStartCamPills!: (mode: CameraMode) => void;
+  private syncStartScenePills!: (id: ScenePresetId) => void;
   private currentCoatId: GoatCoatId = loadSavedCoatId();
+  private currentSceneId: ScenePresetId = loadSavedScenePresetId();
   private maxRunSpeedKmh = 0;
   private lastTrackedInputDevice: InputDevice | null = null;
   private accumulator = 0;
@@ -158,6 +166,7 @@ class ApexGoatGame {
     this.hud.setControlsHelpVisible(false);
 
     this.bindUiEvents();
+    this.applyScenePreset(this.currentSceneId, false);
     const onViewportResize = () => {
       this.renderer.setSize(window.innerWidth, window.innerHeight);
       this.goatCam.resize(window.innerWidth, window.innerHeight);
@@ -204,6 +213,29 @@ class ApexGoatGame {
     }
   }
 
+  private applyScenePreset(sceneId: ScenePresetId, announce = false): void {
+    const preset = this.env.setPreset(sceneId, this.renderer);
+    this.currentSceneId = preset.id;
+    this.course.setWeatherGlow(preset.beaconGlow);
+    this.audio.setStormIntensity(preset.stormWindIntensity);
+    this.hud.setScenePreset(preset);
+    this.syncStartScenePills(preset.id);
+    try {
+      window.localStorage.setItem(SCENE_STORAGE_KEY, preset.id);
+    } catch {
+      // Ignore storage failures
+    }
+    if (announce) {
+      this.hud.showMicroToast(`${preset.icon} SCENE · ${preset.label} (${preset.clock})`);
+    }
+  }
+
+  private cycleScenePreset(): void {
+    const nextId = getNextScenePresetId(this.currentSceneId);
+    this.applyScenePreset(nextId, true);
+    trackEventOnce(`scene/${nextId}`, `Scene: ${nextId}`);
+  }
+
   private applyCoat(coatId: GoatCoatId): void {
     const preset = GOAT_COAT_PRESETS.find((p) => p.id === coatId);
     if (!preset) return;
@@ -247,8 +279,10 @@ class ApexGoatGame {
     const rotateDismissBtn = document.getElementById('rotate-dismiss-btn');
     const resumeBtn = document.getElementById('resume-btn')!;
     const pauseRestartBtn = document.getElementById('pause-restart-btn')!;
+    const pauseSceneBtn = document.getElementById('pause-scene-btn');
     const pauseCamBtn = document.getElementById('pause-cam-btn')!;
     const pauseAudioBtn = document.getElementById('pause-audio-btn');
+    const scenePillBtn = document.getElementById('scene-pill');
     const muteIndicatorBtn = document.getElementById('mute-indicator');
     const helpToggleChip = document.getElementById('help-toggle-chip');
     const controlsHintClose = document.getElementById('controls-hint-close');
@@ -277,6 +311,14 @@ class ApexGoatGame {
       this.toggleAudioMute();
       pauseAudioBtn.blur();
     });
+    pauseSceneBtn?.addEventListener('click', () => {
+      this.cycleScenePreset();
+      pauseSceneBtn.blur();
+    });
+    scenePillBtn?.addEventListener('click', () => {
+      this.cycleScenePreset();
+      scenePillBtn.blur();
+    });
     muteIndicatorBtn?.addEventListener('click', () => {
       this.toggleAudioMute();
       muteIndicatorBtn.blur();
@@ -295,7 +337,23 @@ class ApexGoatGame {
       this.hud.showBanner('RACE YOUR GHOST!', 'GO!', 850);
     });
 
-    // Live Start Modal Selectors (Camera & Goat Coat)
+    // Live Start Modal Selectors (Scene, Camera & Goat Coat)
+    const startSceneBtns = document.querySelectorAll<HTMLButtonElement>('[data-start-scene]');
+    this.syncStartScenePills = (sceneId: ScenePresetId) => {
+      startSceneBtns.forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.startScene === sceneId);
+      });
+    };
+    this.syncStartScenePills(this.currentSceneId);
+    startSceneBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const nextId = btn.dataset.startScene as ScenePresetId;
+        this.applyScenePreset(nextId, false);
+        trackEventOnce(`scene/${nextId}`, `Scene: ${nextId}`);
+        btn.blur();
+      });
+    });
+
     const startCamBtns = document.querySelectorAll<HTMLButtonElement>('[data-start-cam]');
     this.syncStartCamPills = (mode: CameraMode) => {
       startCamBtns.forEach((btn) => {
@@ -521,9 +579,12 @@ class ApexGoatGame {
     const input = this.input.poll();
     this.hud.setInputDevice(input.device, input.gamepadConnected, input.gamepadLayout);
 
-    // Quick mute hotkey (U) works everywhere — Start, Gameplay, Pause, and Finish
+    // Quick mute (U) and scene/weather cycle (T) work everywhere — Start, Play, Pause, and Finish
     if (input.muteToggleJustPressed) {
       this.toggleAudioMute();
+    }
+    if (input.sceneCycleJustPressed) {
+      this.cycleScenePreset();
     }
 
     // Allow camera preview toggle (C) even on the Start overlay
@@ -844,6 +905,7 @@ class ApexGoatGame {
     this.particles.update(frameDt);
     this.env.updateSunAnchor(this.snapshot.position);
     this.goatCam.update(frameDt, this.snapshot, this.rig, this.course);
+    this.env.update(frameDt, this.goatCam.camera.position);
     if (this.started) {
       this.audio.updateContinuous(this.snapshot);
       // Subtle gravel/snow haptic texture on DualSense while carving fast on loose scree!
@@ -866,11 +928,16 @@ class ApexGoatGame {
       }
     }
 
+    const dropMeters = Math.max(
+      0,
+      Math.round(this.course.startPosition.y - this.snapshot.position.y),
+    );
     this.hud.update(
       this.checkpoints.runTime,
       this.checkpoints.nextIndex,
       this.checkpoints.checkpoints.length,
       this.snapshot,
+      dropMeters,
       this.currentFps,
     );
     this.hud.updateCombo(this.combo.getSnapshot());

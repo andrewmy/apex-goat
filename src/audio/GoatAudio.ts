@@ -21,6 +21,7 @@ export class GoatAudio {
   private initialized = false;
   private muted = false;
   private paused = false;
+  private stormIntensity = 0;
   private windDuckUntil = 0;
 
   constructor() {
@@ -137,6 +138,10 @@ export class GoatAudio {
     this.updateMasterGain();
   }
 
+  public setStormIntensity(intensity: number): void {
+    this.stormIntensity = Math.max(0, Math.min(1, intensity));
+  }
+
   public updateContinuous(snap: GoatPhysicsSnapshot): void {
     if (
       !this.initialized ||
@@ -151,13 +156,15 @@ export class GoatAudio {
     const now = this.ctx.currentTime;
     const speedNorm = Math.min(1, snap.speed / 36);
     const exposureNorm = Math.min(1, snap.exposureHeight / 120);
-    // Alpine wind swells with speed, sheer cliff drop exposure, and big airs
+    // Alpine wind swells with speed, sheer cliff drop exposure, big airs, and squall weather
     // (kept balanced + ducked briefly during bleats so vocals & hoof clacks cut through!)
     const duckMul = now < this.windDuckUntil ? 0.42 : 1.0;
     const airBonus = snap.grounded ? 0 : 0.08;
+    const stormBed = this.stormIntensity * 0.135;
     const targetWindVol =
-      (0.02 + speedNorm * speedNorm * 0.19 + exposureNorm * 0.04 + airBonus) * duckMul;
-    const targetWindFreq = 240 + speedNorm * 1050 + (snap.grounded ? 0 : 240);
+      (0.02 + speedNorm * speedNorm * 0.19 + exposureNorm * 0.04 + airBonus + stormBed) * duckMul;
+    const targetWindFreq =
+      240 + speedNorm * 1050 + (snap.grounded ? 0 : 240) + this.stormIntensity * 260;
     this.windGain.gain.setTargetAtTime(targetWindVol, now, 0.05);
     this.windFilter.frequency.setTargetAtTime(targetWindFreq, now, 0.06);
 

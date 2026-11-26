@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getScenePreset, ScenePreset, ScenePresetId } from './WeatherPresets';
 
 /** Deterministic hash noise for alpine peaks & valley details */
 function hash2(x: number, z: number): number {
@@ -34,23 +35,42 @@ function fbm2(x: number, z: number): number {
 
 export class AlpineEnvironment {
   public sunLight: THREE.DirectionalLight;
+  public currentPresetId: ScenePresetId = 'noon';
+
+  private readonly scene: THREE.Scene;
+  private readonly fog: THREE.FogExp2;
+  private readonly skyMat: THREE.ShaderMaterial;
+  private readonly hemiLight: THREE.HemisphereLight;
+  private readonly sunOffset = new THREE.Vector3(210, 270, 135);
+  private readonly snowPoints: THREE.Points;
+  private readonly snowPositions: Float32Array;
+  private readonly snowSpeeds: Float32Array;
+  private readonly snowCount: number;
+  private readonly snowBoxX = 44;
+  private readonly snowBoxY = 26;
+  private readonly snowBoxZ = 44;
+  private snowIntensity = 0;
 
   constructor(scene: THREE.Scene, options?: { isMobile?: boolean }) {
     const isMobile = options?.isMobile ?? false;
+    this.scene = scene;
     // Crisp high-altitude cobalt alpine sky + atmospheric depth fog
     scene.background = new THREE.Color(0x5da4e8);
-    scene.fog = new THREE.FogExp2(0x8bc0ec, 0.00048);
+    this.fog = new THREE.FogExp2(0x8bc0ec, 0.00048);
+    scene.fog = this.fog;
 
     // Sky dome with alpine zenith-to-horizon gradient + sun halo
     const skyGeo = new THREE.SphereGeometry(2800, 32, 20);
-    const skyMat = new THREE.ShaderMaterial({
+    this.skyMat = new THREE.ShaderMaterial({
       side: THREE.BackSide,
       depthWrite: false,
       uniforms: {
         topColor: { value: new THREE.Color(0x114494) },
         midColor: { value: new THREE.Color(0x5aa4e6) },
         horizonColor: { value: new THREE.Color(0xcde5fa) },
-        sunDir: { value: new THREE.Vector3(0.55, 0.48, -0.68).normalize() },
+        sunDir: { value: new THREE.Vector3(210, 270, 135).normalize() },
+        sunHaloColor: { value: new THREE.Color(0xfff0c7) },
+        sunHaloStrength: { value: 0.9 },
       },
       vertexShader: `
         varying vec3 vWorldDir;
@@ -65,6 +85,8 @@ export class AlpineEnvironment {
         uniform vec3 midColor;
         uniform vec3 horizonColor;
         uniform vec3 sunDir;
+        uniform vec3 sunHaloColor;
+        uniform float sunHaloStrength;
         varying vec3 vWorldDir;
         void main() {
           vec3 d = normalize(vWorldDir);
@@ -72,18 +94,18 @@ export class AlpineEnvironment {
           vec3 col = mix(horizonColor, midColor, smoothstep(0.0, 0.28, h));
           col = mix(col, topColor, smoothstep(0.25, 0.85, h));
           float sunAmt = max(dot(d, sunDir), 0.0);
-          col += vec3(1.0, 0.94, 0.78) * pow(sunAmt, 64.0) * 0.9;
-          col += vec3(1.0, 0.96, 0.88) * pow(sunAmt, 7.0) * 0.16;
+          col += sunHaloColor * pow(sunAmt, 64.0) * sunHaloStrength;
+          col += mix(sunHaloColor, vec3(1.0), 0.35) * pow(sunAmt, 7.0) * (0.18 * sunHaloStrength);
           gl_FragColor = vec4(col, 1.0);
         }
       `,
     });
-    scene.add(new THREE.Mesh(skyGeo, skyMat));
+    scene.add(new THREE.Mesh(skyGeo, this.skyMat));
 
     // Dramatic alpine sunlight (high cross-light from right-rear so BOTH the inner left cliff
     // AND the opposite Chasm Leap rock face catch golden alpine sun, never solid black!)
-    const hemi = new THREE.HemisphereLight(0xc8e4ff, 0x8493a6, 1.2);
-    scene.add(hemi);
+    this.hemiLight = new THREE.HemisphereLight(0xc8e4ff, 0x8493a6, 1.2);
+    scene.add(this.hemiLight);
 
     this.sunLight = new THREE.DirectionalLight(0xfff2da, 2.2);
     this.sunLight.position.set(220, 290, 140);
@@ -101,14 +123,133 @@ export class AlpineEnvironment {
     scene.add(this.sunLight);
     scene.add(this.sunLight.target);
 
+    // Lightweight driving-snow particle volume (active during 'squall' preset)
+    this.snowCount = isMobile ? 250 : 600;
+    this.snowPositions = new Float32Array(this.snowCount * 3);
+    this.snowSpeeds = new Float32Array(this.snowCount);
+    for (let i = 0; i < this.snowCount; i++) {
+      this.snowPositions[i * 3] = (Math.random() - 0.5) * this.snowBoxX;
+      this.snowPositions[i * 3 + 1] = (Math.random() - 0.5) * this.snowBoxY;
+      this.snowPositions[i * 3 + 2] = (Math.random() - 0.5) * this.snowBoxZ;
+      this.snowSpeeds[i] = 0.72 + Math.random() * 0.56;
+    }
+    const snowGeo = new THREE.BufferGeometry();
+    snowGeo.setAttribute('position', new THREE.BufferAttribute(this.snowPositions, 3));
+    const snowMat = new THREE.PointsMaterial({
+      color: 0xf4f9ff,
+      map: this.createSnowflakeTexture(),
+      size: isMobile ? 0.28 : 0.24,
+      transparent: true,
+      opacity: 0.84,
+      depthWrite: false,
+      sizeAttenuation: true,
+      fog: false,
+    });
+    this.snowPoints = new THREE.Points(snowGeo, snowMat);
+    this.snowPoints.frustumCulled = false;
+    this.snowPoints.visible = false;
+    scene.add(this.snowPoints);
+
     this.buildValleyAndPeaks(scene);
     this.buildPineForest(scene, isMobile ? 320 : 700);
   }
 
+  private createSnowflakeTexture(): THREE.CanvasTexture {
+    const size = 32;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    const grad = ctx.createRadialGradient(size / 2, size / 2, 1, size / 2, size / 2, size / 2);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    grad.addColorStop(0.55, 'rgba(235, 246, 255, 0.85)');
+    grad.addColorStop(1, 'rgba(235, 246, 255, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  public setPreset(id: ScenePresetId, renderer: THREE.WebGLRenderer): ScenePreset {
+    const preset = getScenePreset(id);
+    this.currentPresetId = preset.id;
+
+    if (this.scene.background instanceof THREE.Color) {
+      this.scene.background.setHex(preset.sceneBg);
+    } else {
+      this.scene.background = new THREE.Color(preset.sceneBg);
+    }
+
+    this.fog.color.setHex(preset.fogColor);
+    this.fog.density = preset.fogDensity;
+
+    (this.skyMat.uniforms.topColor.value as THREE.Color).setHex(preset.skyTop);
+    (this.skyMat.uniforms.midColor.value as THREE.Color).setHex(preset.skyMid);
+    (this.skyMat.uniforms.horizonColor.value as THREE.Color).setHex(preset.skyHorizon);
+    (this.skyMat.uniforms.sunHaloColor.value as THREE.Color).setHex(preset.sunHaloColor);
+    this.skyMat.uniforms.sunHaloStrength.value = preset.sunHaloStrength;
+
+    this.sunOffset.set(preset.sunOffset[0], preset.sunOffset[1], preset.sunOffset[2]);
+    (this.skyMat.uniforms.sunDir.value as THREE.Vector3).copy(this.sunOffset).normalize();
+
+    this.sunLight.color.setHex(preset.sunColor);
+    this.sunLight.intensity = preset.sunIntensity;
+    this.hemiLight.color.setHex(preset.hemiSky);
+    this.hemiLight.groundColor.setHex(preset.hemiGround);
+    this.hemiLight.intensity = preset.hemiIntensity;
+
+    renderer.toneMappingExposure = preset.exposure;
+
+    this.snowIntensity = preset.snowIntensity;
+    this.snowPoints.visible = this.snowIntensity > 0.01;
+    return preset;
+  }
+
   public updateSunAnchor(playerPos: THREE.Vector3): void {
-    this.sunLight.position.set(playerPos.x + 210, playerPos.y + 270, playerPos.z + 135);
+    this.sunLight.position.set(
+      playerPos.x + this.sunOffset.x,
+      playerPos.y + this.sunOffset.y,
+      playerPos.z + this.sunOffset.z,
+    );
     this.sunLight.target.position.copy(playerPos);
     this.sunLight.target.updateMatrixWorld();
+  }
+
+  public update(dt: number, anchorPos: THREE.Vector3): void {
+    if (this.snowIntensity <= 0.01) return;
+
+    const halfX = this.snowBoxX * 0.5;
+    const halfY = this.snowBoxY * 0.5;
+    const halfZ = this.snowBoxZ * 0.5;
+    const pos = this.snowPositions;
+
+    // Anchor snow box around the player/camera and wrap each flake cleanly (zero allocations)
+    for (let i = 0; i < this.snowCount; i++) {
+      const sp = this.snowSpeeds[i];
+      const idx = i * 3;
+      let x = pos[idx] - 9.2 * sp * dt;
+      let y = pos[idx + 1] - 6.4 * sp * dt;
+      let z = pos[idx + 2] + 4.8 * sp * dt;
+
+      const dx = x - anchorPos.x;
+      if (dx < -halfX) x += this.snowBoxX * Math.ceil((-halfX - dx) / this.snowBoxX);
+      else if (dx > halfX) x -= this.snowBoxX * Math.ceil((dx - halfX) / this.snowBoxX);
+
+      const dy = y - (anchorPos.y + 3.0);
+      if (dy < -halfY) y += this.snowBoxY * Math.ceil((-halfY - dy) / this.snowBoxY);
+      else if (dy > halfY) y -= this.snowBoxY * Math.ceil((dy - halfY) / this.snowBoxY);
+
+      const dz = z - anchorPos.z;
+      if (dz < -halfZ) z += this.snowBoxZ * Math.ceil((-halfZ - dz) / this.snowBoxZ);
+      else if (dz > halfZ) z -= this.snowBoxZ * Math.ceil((dz - halfZ) / this.snowBoxZ);
+
+      pos[idx] = x;
+      pos[idx + 1] = y;
+      pos[idx + 2] = z;
+    }
+
+    (this.snowPoints.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
   }
 
   private buildValleyAndPeaks(scene: THREE.Scene): void {

@@ -72,6 +72,11 @@ export class AlpineCourse {
   public readonly finishT = 0.885;
   public readonly finishStopPos = new THREE.Vector3();
 
+  private flagMat!: THREE.MeshStandardMaterial;
+  private finishFlagMat!: THREE.MeshStandardMaterial;
+  private beaconMat!: THREE.MeshStandardMaterial;
+  private finishBeaconMat!: THREE.MeshStandardMaterial;
+
   constructor(scene: THREE.Scene) {
     // Control points with GENUINELY STEEP alpine inclines (y = 650m -> -115m: 765m vertical plunge!)
     // plus sharp, punchy ~70m asymmetric pump rollers & a massive 260m Scree Chute!
@@ -740,17 +745,35 @@ export class AlpineCourse {
 
   private buildVisualLandmarks(): void {
     const poleMat = new THREE.MeshStandardMaterial({ color: 0x2d3440, roughness: 0.6 });
-    const flagMat = new THREE.MeshStandardMaterial({
+    this.flagMat = new THREE.MeshStandardMaterial({
       color: 0xff5a2c,
-      emissive: 0x330d00,
+      emissive: 0xff541f,
+      emissiveIntensity: 0.22,
       roughness: 0.7,
       side: THREE.DoubleSide,
     });
-    const finishFlagMat = new THREE.MeshStandardMaterial({
+    this.finishFlagMat = new THREE.MeshStandardMaterial({
       color: 0x3ef79a,
-      emissive: 0x0a4428,
+      emissive: 0x1ee880,
+      emissiveIntensity: 0.35,
       roughness: 0.5,
       side: THREE.DoubleSide,
+    });
+    this.beaconMat = new THREE.MeshStandardMaterial({
+      color: 0xffb347,
+      emissive: 0xff8a24,
+      emissiveIntensity: 0.45,
+      roughness: 0.25,
+      flatShading: true,
+      fog: false,
+    });
+    this.finishBeaconMat = new THREE.MeshStandardMaterial({
+      color: 0x5effb2,
+      emissive: 0x2ef596,
+      emissiveIntensity: 0.55,
+      roughness: 0.25,
+      flatShading: true,
+      fog: false,
     });
     const cairnMat = new THREE.MeshStandardMaterial({
       color: 0xaba394,
@@ -784,7 +807,7 @@ export class AlpineCourse {
         pole.position.copy(basePos).add(new THREE.Vector3(0, 1.5, 0));
         this.decorGroup.add(pole);
 
-        const flag = new THREE.Mesh(flagGeo, flagMat);
+        const flag = new THREE.Mesh(flagGeo, this.flagMat);
         flag.position.copy(basePos).add(new THREE.Vector3(0.45, 2.45, 0));
         flag.rotation.y = Math.atan2(s.tangent.x, s.tangent.z) + 0.3;
         this.decorGroup.add(flag);
@@ -793,10 +816,12 @@ export class AlpineCourse {
 
     const gatePoleGeo = new THREE.CylinderGeometry(0.12, 0.15, 6.2, 6);
     const bannerGeo = new THREE.PlaneGeometry(1.5, 2.5);
+    const beaconGeo = new THREE.OctahedronGeometry(0.32, 0);
 
     for (const cp of this.checkpoints) {
       const halfSpan = Math.min(cp.width * 0.48, 9.5);
-      const mat = cp.isFinish ? finishFlagMat : flagMat;
+      const mat = cp.isFinish ? this.finishFlagMat : this.flagMat;
+      const bMat = cp.isFinish ? this.finishBeaconMat : this.beaconMat;
 
       for (const side of [-1, 1]) {
         const p = cp.position.clone().addScaledVector(cp.right, side * halfSpan);
@@ -804,6 +829,10 @@ export class AlpineCourse {
         pole.position.copy(p).add(new THREE.Vector3(0, 2.9, 0));
         pole.castShadow = true;
         this.decorGroup.add(pole);
+
+        const beacon = new THREE.Mesh(beaconGeo, bMat);
+        beacon.position.copy(p).add(new THREE.Vector3(0, 6.18, 0));
+        this.decorGroup.add(beacon);
 
         const banner = new THREE.Mesh(bannerGeo, mat);
         banner.position
@@ -816,12 +845,21 @@ export class AlpineCourse {
 
       if (cp.isFinish) {
         const barGeo = new THREE.BoxGeometry(halfSpan * 2 + 0.4, 0.6, 0.38);
-        const bar = new THREE.Mesh(barGeo, finishFlagMat);
+        const bar = new THREE.Mesh(barGeo, this.finishFlagMat);
         bar.position.copy(cp.position).add(new THREE.Vector3(0, 5.8, 0));
         bar.lookAt(bar.position.clone().add(cp.forward));
         this.decorGroup.add(bar);
       }
     }
+  }
+
+  /** Boosts checkpoint banner & pole beacon glow so gates cut dramatically through storm/twilight */
+  public setWeatherGlow(intensity: number): void {
+    const t = THREE.MathUtils.clamp(intensity, 0, 1);
+    this.flagMat.emissiveIntensity = 0.22 + t * 1.45;
+    this.finishFlagMat.emissiveIntensity = 0.35 + t * 1.4;
+    this.beaconMat.emissiveIntensity = 0.45 + t * 2.8;
+    this.finishBeaconMat.emissiveIntensity = 0.55 + t * 2.6;
   }
 
   public getSampleAt(t: number): CourseSplineSample {

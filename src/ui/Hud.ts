@@ -46,6 +46,7 @@ const PAD_GLYPHS: Record<GamepadLayout, PadGlyphs> = {
 import { getSurfaceConfig } from '../physics/SurfaceMaterials';
 import { CameraMode } from '../camera/GoatCamera';
 import { SplitEvent } from '../world/Checkpoints';
+import { ScenePreset } from '../world/WeatherPresets';
 
 export function formatTime(sec: number): string {
   const clamped = Math.max(0, sec);
@@ -63,6 +64,7 @@ export class Hud {
   private readonly timerEl = document.getElementById('timer-display')!;
   private readonly cpEl = document.getElementById('cp-display')!;
   private readonly altEl = document.getElementById('alt-display')!;
+  private readonly dropEl = document.getElementById('drop-display')!;
   private readonly deltaEl = document.getElementById('split-delta')!;
   private readonly speedEl = document.getElementById('speed-display')!;
   private readonly slopeEl = document.getElementById('slope-display')!;
@@ -73,6 +75,9 @@ export class Hud {
   private readonly mSurfaceEl = document.getElementById('m-surface-display');
   private readonly pausePbEl = document.getElementById('pause-pb');
   private readonly finishPbEl = document.getElementById('finish-pb');
+  private readonly nextMedalEl = document.getElementById('next-medal-target');
+  private readonly scenePillTextEl = document.getElementById('scene-pill-text');
+  private readonly pauseSceneBtnEl = document.getElementById('pause-scene-btn');
   private readonly speedArcEl = document.getElementById('speed-arc') as unknown as SVGCircleElement;
   private readonly pumpArcEl = document.getElementById('pump-arc') as unknown as SVGCircleElement;
   private readonly needleEl = document.getElementById('speed-needle') as unknown as SVGGElement;
@@ -128,6 +133,8 @@ export class Hud {
 
   private audioMuted = false;
   private controlsHelpVisible = false;
+  private currentScenePreset: ScenePreset | null = null;
+  private lastDropText = '';
 
   private lastSpeedText = '';
   private lastSlopeText = '';
@@ -203,6 +210,36 @@ export class Hud {
     if (this.finishPbEl) {
       this.finishPbEl.textContent = formatted;
     }
+    if (this.nextMedalEl) {
+      if (pbSec === null || pbSec > 46) {
+        this.nextMedalEl.textContent = 'BRONZE 00:46.00';
+        this.nextMedalEl.style.color = '#f0a675';
+      } else if (pbSec > 38) {
+        this.nextMedalEl.textContent = 'SILVER 00:38.00';
+        this.nextMedalEl.style.color = '#d8e3f0';
+      } else if (pbSec > 32) {
+        this.nextMedalEl.textContent = 'GOLD 00:32.00';
+        this.nextMedalEl.style.color = '#ffd447';
+      } else {
+        this.nextMedalEl.textContent = '★ GOLD 00:32.00';
+        this.nextMedalEl.style.color = '#47ff9c';
+      }
+    }
+  }
+
+  public setScenePreset(preset: ScenePreset): void {
+    this.currentScenePreset = preset;
+    if (this.scenePillTextEl) {
+      this.scenePillTextEl.textContent = `${preset.icon} ${preset.shortLabel} · ${preset.clock}`;
+    }
+    this.renderPauseSceneButton();
+  }
+
+  private renderPauseSceneButton(): void {
+    if (!this.pauseSceneBtnEl || !this.currentScenePreset) return;
+    const isKeyboard = this.activeDevice === null || this.activeDevice === 'keyboard';
+    const keySuffix = isKeyboard ? ' (T)' : '';
+    this.pauseSceneBtnEl.textContent = `${this.currentScenePreset.icon} ${this.currentScenePreset.shortLabel}${keySuffix}`;
   }
 
   public setAudioMuted(muted: boolean): void {
@@ -377,7 +414,7 @@ export class Hud {
       }
       if (this.startBtnEl) this.startBtnEl.textContent = 'Drop In';
       if (this.resumeBtnEl) this.resumeBtnEl.textContent = 'Resume';
-      if (this.pauseRestartBtnEl) this.pauseRestartBtnEl.textContent = 'Restart Run';
+      if (this.pauseRestartBtnEl) this.pauseRestartBtnEl.textContent = 'Restart';
       if (this.pauseCamBtnEl) this.pauseCamBtnEl.textContent = 'Camera';
       if (this.finishRetryBtnEl) this.finishRetryBtnEl.textContent = 'Race Your Ghost';
     } else if (device === 'gamepad') {
@@ -403,7 +440,7 @@ export class Hud {
       }
       if (this.startBtnEl) this.startBtnEl.textContent = `Drop In (Press ${g.jump} / ${g.pause})`;
       if (this.resumeBtnEl) this.resumeBtnEl.textContent = `Resume (${g.pause} / ${g.back})`;
-      if (this.pauseRestartBtnEl) this.pauseRestartBtnEl.textContent = `Restart Run (${g.restart})`;
+      if (this.pauseRestartBtnEl) this.pauseRestartBtnEl.textContent = `Restart (${g.restart})`;
       if (this.pauseCamBtnEl) this.pauseCamBtnEl.textContent = `Camera (${g.cam})`;
       if (this.finishRetryBtnEl) {
         this.finishRetryBtnEl.textContent = `Race Your Ghost (${g.jump} / ${g.restart})`;
@@ -412,13 +449,13 @@ export class Hud {
       this.controlsHintBodyEl.innerHTML = `
         <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Sprint &amp; Carve · <kbd>SPACE</kbd> Leap</div>
         <div><kbd>SHIFT</kbd> Pump / Dive · <kbd>F</kbd> Ram · <kbd>B</kbd> Bleat</div>
-        <div><kbd>R</kbd> Restart · <kbd>BKSP</kbd> CP · <kbd>C</kbd> Cam · <kbd>U</kbd> Audio · <kbd>ESC</kbd> Pause</div>
+        <div><kbd>R</kbd> Restart · <kbd>BKSP</kbd> CP · <kbd>C</kbd> Cam · <kbd>T</kbd> Scene · <kbd>U</kbd> Audio</div>
       `;
       if (this.startTipsEl) {
         this.startTipsEl.innerHTML = `
           <div><strong>Slope-Pump (SHIFT):</strong> Dive onto steep backsides to convert drop into a massive speed surge.</div>
           <div><strong>Ram (F) &amp; Wall-Kick (SPACE):</strong> Blast herd goats (+18 km/h) or kick off steep walls.</div>
-          <div><strong>Quick Keys:</strong> <strong>C</strong> Cam · <strong>R</strong> Restart · <strong>U</strong> Audio · <strong>H</strong> Controls.</div>
+          <div><strong>Quick Keys:</strong> <strong>T</strong> Scene · <strong>C</strong> Cam · <strong>R</strong> Restart · <strong>U</strong> Audio · <strong>H</strong> Controls.</div>
         `;
       }
       if (this.pauseTricksEl) {
@@ -431,11 +468,12 @@ export class Hud {
       }
       if (this.startBtnEl) this.startBtnEl.textContent = 'Drop In (Click or Press Space)';
       if (this.resumeBtnEl) this.resumeBtnEl.textContent = 'Resume (ESC / P)';
-      if (this.pauseRestartBtnEl) this.pauseRestartBtnEl.textContent = 'Restart Run (R)';
+      if (this.pauseRestartBtnEl) this.pauseRestartBtnEl.textContent = 'Restart (R)';
       if (this.pauseCamBtnEl) this.pauseCamBtnEl.textContent = 'Camera (C)';
       if (this.finishRetryBtnEl) this.finishRetryBtnEl.textContent = 'Race Your Ghost (R / Space)';
     }
     this.renderPauseAudioButton();
+    this.renderPauseSceneButton();
   }
 
   public update(
@@ -443,6 +481,7 @@ export class Hud {
     cpIndex: number,
     cpTotal: number,
     snap: GoatPhysicsSnapshot,
+    dropMeters: number,
     fps?: number,
   ): void {
     if (fps !== undefined && fps !== this.lastFpsDisplay) {
@@ -450,10 +489,15 @@ export class Hud {
       this.renderCamLabel(fps);
     }
     this.timerEl.textContent = formatTime(runTime);
-    this.cpEl.textContent = `CP ${cpIndex} / ${cpTotal}`;
+    this.cpEl.textContent = `CP ${cpIndex}/${cpTotal}`;
     // Dramatic alpine altitude readout (start ~2450m above sea level)
     const altM = Math.round(2110 + snap.position.y);
     this.altEl.textContent = `ALT ${altM}m`;
+    const dropStr = `DROP ${dropMeters}m`;
+    if (dropStr !== this.lastDropText) {
+      this.lastDropText = dropStr;
+      this.dropEl.textContent = dropStr;
+    }
 
     const kmh = Math.round(snap.speed * 3.6);
     const speedStr = String(kmh);
