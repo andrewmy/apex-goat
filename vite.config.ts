@@ -55,10 +55,17 @@ function buildTrackerPlugin(): Plugin {
   };
 }
 
-export default defineConfig({
+function normalizeBase(base?: string): string {
+  if (!base) return './';
+  const trimmed = base.replace(/^\/+|\/+$/g, '');
+  return trimmed ? `/${trimmed}/` : '/';
+}
+
+export default defineConfig(({ command }) => ({
+  base: command === 'serve' ? '/' : normalizeBase(process.env.VITE_BASE),
   plugins: [buildTrackerPlugin()],
   server: {
     port: 5173,
     strictPort: true,
   },
-});
+}));

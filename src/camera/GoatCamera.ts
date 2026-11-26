@@ -66,12 +66,7 @@ export class GoatCamera {
     this.camera.updateProjectionMatrix();
   }
 
-  public update(
-    dt: number,
-    snap: GoatPhysicsSnapshot,
-    rig: GoatRig,
-    course?: AlpineCourse,
-  ): void {
+  public update(dt: number, snap: GoatPhysicsSnapshot, rig: GoatRig, course?: AlpineCourse): void {
     if (this.victoryOrbit) {
       rig.setFirstPersonMode(false);
       this.victoryOrbitAngle += dt * 0.52;

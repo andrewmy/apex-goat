@@ -363,8 +363,7 @@ export class GoatController {
 
     // Execute Athletic Goat Jump OR Repeatable Steep-Cliff Wall-Kick!
     if (this.jumpBufferTimer > 0 && (this.coyoteTimer > 0 || this.wallCoyoteTimer > 0)) {
-      const steepWallKick =
-        this.grounded && this.slopeDeg >= 40 && this.velocity.length() >= 6.0;
+      const steepWallKick = this.grounded && this.slopeDeg >= 40 && this.velocity.length() >= 6.0;
       const isWallKick = (!this.grounded && this.wallCoyoteTimer > 0) || steepWallKick;
       const chargeBonus = 1.0 + this.jumpCharge * 0.22;
 
@@ -472,7 +471,8 @@ export class GoatController {
         if (downhillDir.lengthSq() > 0.015) {
           downhillDir.normalize();
           // Trigger cleanly whenever landing onto a forward downhill slope (even on banked turns!)
-          const goingDownhill = this._slopeForward.y < -0.1 || downhillDir.dot(this._slopeForward) > 0.15;
+          const goingDownhill =
+            this._slopeForward.y < -0.1 || downhillDir.dot(this._slopeForward) > 0.15;
           if (goingDownhill && this.slopeDeg >= 8) {
             const slopeFactor = THREE.MathUtils.clamp(this.slopeDeg / 28, 0.55, 1.55);
             const energy = Math.max(verticalFallSpeed, impactNormalSpeed);

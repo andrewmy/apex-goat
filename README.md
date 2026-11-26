@@ -22,6 +22,7 @@ npm run dev
 ```
 
 Play: http://localhost:5173/
+
 ## Scripts
 
 | Command                | Description                                         |

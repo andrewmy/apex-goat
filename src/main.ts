@@ -62,6 +62,7 @@ class ApexGoatGame {
   private readonly recorder: GhostRecorder;
   private readonly herd: GhostHerd;
   private readonly hud: Hud;
+  public readonly buildBadge: BuildBadge;
 
   private readonly snapshot = createEmptySnapshot();
   private started = false;
@@ -112,7 +113,7 @@ class ApexGoatGame {
     this.recorder = new GhostRecorder();
     this.herd = new GhostHerd(this.scene, this.course);
     this.hud = new Hud();
-    new BuildBadge();
+    this.buildBadge = new BuildBadge();
 
     this.hud.setPersonalBest(this.recorder.personalBest?.totalTime ?? null);
     this.hud.setCameraMode(this.goatCam.mode);

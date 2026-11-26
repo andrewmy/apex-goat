@@ -26,11 +26,11 @@ export class BuildBadge {
           this.markOutdated(payload.stamp);
         }
       });
-    }
 
-    this.pollHandle = window.setInterval(() => {
-      void this.checkServerStamp();
-    }, 2500);
+      this.pollHandle = window.setInterval(() => {
+        void this.checkServerStamp();
+      }, 2500);
+    }
   }
 
   private renderIdle(): void {
