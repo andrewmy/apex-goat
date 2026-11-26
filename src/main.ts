@@ -16,11 +16,13 @@ import { QuadrupedIK } from './goat/QuadrupedIK';
 import { CameraMode, GoatCamera } from './camera/GoatCamera';
 import { GoatAudio } from './audio/GoatAudio';
 import { PebbleParticles } from './vfx/PebbleParticles';
+import { CarveTrails } from './vfx/CarveTrails';
 import { GhostRecorder } from './ghosts/GhostRecorder';
 import { GhostHerd } from './ghosts/GhostHerd';
 import { Hud, formatTime } from './ui/Hud';
 import { CourseMap } from './ui/CourseMap';
 import { HorizonCompass } from './ui/HorizonCompass';
+import { OnboardingPointers } from './ui/OnboardingPointers';
 import { BuildBadge } from './ui/BuildBadge';
 import { ComboTracker } from './scoring/ComboTracker';
 import { trackEvent, trackEventOnce } from './analytics';
@@ -89,11 +91,13 @@ class ApexGoatGame {
   private readonly goatCam: GoatCamera;
   private readonly audio: GoatAudio;
   private readonly particles: PebbleParticles;
+  private readonly carveTrails: CarveTrails;
   private readonly recorder: GhostRecorder;
   private readonly herd: GhostHerd;
   private readonly hud: Hud;
   private readonly courseMap: CourseMap;
   private readonly horizonCompass: HorizonCompass;
+  private readonly onboarding: OnboardingPointers;
   private readonly combo: ComboTracker;
   public readonly buildBadge: BuildBadge;
 
@@ -158,11 +162,13 @@ class ApexGoatGame {
     this.goatCam.startOrbit = true;
     this.audio = new GoatAudio();
     this.particles = new PebbleParticles(this.scene);
+    this.carveTrails = new CarveTrails(this.scene, this.course);
     this.recorder = new GhostRecorder();
     this.herd = new GhostHerd(this.scene, this.course, { isMobile: this.isMobileProfile });
     this.hud = new Hud();
     this.courseMap = new CourseMap(this.course, this.isMobileProfile);
     this.horizonCompass = new HorizonCompass();
+    this.onboarding = new OnboardingPointers(this.isMobileProfile);
     this.combo = new ComboTracker();
     this.buildBadge = new BuildBadge();
 
@@ -239,6 +245,7 @@ class ApexGoatGame {
   private cycleScenePreset(): void {
     const nextId = getNextScenePresetId(this.currentSceneId);
     this.applyScenePreset(nextId, true);
+    this.onboarding.dismiss('scene');
     trackEventOnce(`scene/${nextId}`, `Scene: ${nextId}`);
   }
 
@@ -262,6 +269,7 @@ class ApexGoatGame {
 
   private toggleCourseMap(): void {
     const visible = this.courseMap.toggle();
+    this.onboarding.dismiss('map');
     this.hud.showMicroToast(visible ? '🗺 MAP ON' : '🗺 MAP HIDDEN');
   }
 
@@ -278,6 +286,7 @@ class ApexGoatGame {
     this.rig.setFirstPersonMode(this.goatCam.mode === 'gopro');
     this.checkpoints.startRun();
     this.updateTouchControlsVisibility();
+    this.onboarding.startAfterDropIn();
     this.hud.showBanner('DROP IN!', 'THREAD THE RAZOR LEDGE', 1300);
   }
 
@@ -347,6 +356,7 @@ class ApexGoatGame {
     });
     helpToggleChip?.addEventListener('click', () => {
       this.hud.setControlsHelpVisible(true);
+      this.onboarding.dismiss('help');
       helpToggleChip.blur();
     });
     controlsHintClose?.addEventListener('click', () => {
@@ -448,6 +458,7 @@ class ApexGoatGame {
     this.paused = nextPaused;
     this.pauseOverlayEl.classList.toggle('hidden', !nextPaused);
     this.audio.setPaused(nextPaused);
+    this.onboarding.setSuspended(nextPaused);
     this.updateTouchControlsVisibility();
     if (!nextPaused) {
       this.lastFrameTime = performance.now();
@@ -542,6 +553,7 @@ class ApexGoatGame {
     }
     this.recorder.reset();
     this.herd.reset();
+    this.carveTrails.reset();
     this.combo.reset();
     this.goatCam.startOrbit = !this.started;
     this.goatCam.reset(preserveCameraBlend);
@@ -562,6 +574,7 @@ class ApexGoatGame {
 
   private resetToCheckpoint(): void {
     this.hud.hideWipeout();
+    this.carveTrails.breakRibbon();
     // After finishing the run, never respawn into the finish gate in a fall loop —
     // place the goat safely in the flat Valley Finish Meadow!
     if (this.checkpoints.runFinished) {
@@ -639,10 +652,12 @@ class ApexGoatGame {
         const mode = this.goatCam.toggleMode(this.rig);
         this.hud.setCameraMode(mode);
         this.syncStartCamPills(mode);
+        this.onboarding.dismiss('help');
         trackEventOnce(`camera/${mode}`, `Camera: ${mode}`);
       }
       if (input.helpToggleJustPressed && !this.paused && !this.checkpoints.runFinished) {
         this.hud.toggleControlsHelp();
+        this.onboarding.dismiss('help');
       }
       if (input.restartJustPressed) {
         const isRetry = this.checkpoints.runFinished;
@@ -928,6 +943,10 @@ class ApexGoatGame {
       this.particles,
     );
     this.particles.update(frameDt);
+    if (this.started) {
+      this.carveTrails.update(frameDt, this.snapshot);
+      this.onboarding.update(frameDt, this.checkpoints.nextIndex);
+    }
     this.env.updateSunAnchor(this.snapshot.position);
     this.goatCam.update(frameDt, this.snapshot, this.rig, this.course);
     this.env.update(frameDt, this.goatCam.camera.position);

@@ -655,6 +655,122 @@
         transform: translateX(-50%) translateY(0);
       }
 
+      /* First-Visit Floating Discovery Pointer Callouts (Desktop Only) */
+      #onboarding-pointers {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 15;
+        opacity: 0;
+        transition: opacity 0.35s ease;
+      }
+      #onboarding-pointers.visible {
+        opacity: 1;
+      }
+      #onboarding-pointers.suspended {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .pointer-callout {
+        position: absolute;
+        pointer-events: auto;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(10, 18, 32, 0.78);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(95, 243, 255, 0.44);
+        box-shadow:
+          0 8px 24px rgba(0, 0, 0, 0.38),
+          inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        color: #eef7ff;
+        font-family: inherit;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        animation: calloutBob 2.6s ease-in-out infinite;
+        transition:
+          opacity 0.22s ease,
+          transform 0.22s ease;
+      }
+      .pointer-callout:hover {
+        background: rgba(14, 28, 48, 0.9);
+        border-color: rgba(95, 243, 255, 0.8);
+      }
+      .pointer-callout.dismissed {
+        opacity: 0;
+        pointer-events: none;
+        transform: scale(0.92);
+      }
+      .pointer-callout kbd {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 17px;
+        height: 16px;
+        padding: 0 4px;
+        border-radius: 4px;
+        background: rgba(95, 243, 255, 0.2);
+        border: 1px solid rgba(95, 243, 255, 0.45);
+        font-family: inherit;
+        font-size: 9.5px;
+        font-weight: 800;
+        color: #7ef2ff;
+      }
+      .pointer-callout::before {
+        content: '';
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        background: rgba(10, 18, 32, 0.86);
+        transform: rotate(45deg);
+      }
+      .callout-map {
+        top: 52px;
+        left: 212px;
+      }
+      .callout-map::before {
+        top: -5px;
+        left: 18px;
+        border-top: 1px solid rgba(95, 243, 255, 0.44);
+        border-left: 1px solid rgba(95, 243, 255, 0.44);
+      }
+      .callout-scene {
+        top: 90px;
+        right: 24px;
+      }
+      .callout-scene::before {
+        top: -5px;
+        right: 24px;
+        border-top: 1px solid rgba(95, 243, 255, 0.44);
+        border-left: 1px solid rgba(95, 243, 255, 0.44);
+      }
+      .callout-help {
+        bottom: 78px;
+        left: 24px;
+      }
+      .callout-help::before {
+        bottom: -5px;
+        left: 24px;
+        border-right: 1px solid rgba(95, 243, 255, 0.44);
+        border-bottom: 1px solid rgba(95, 243, 255, 0.44);
+      }
+      @keyframes calloutBob {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-3px);
+        }
+      }
+
       .hud-bottom {
         display: flex;
         justify-content: space-between;
@@ -1670,7 +1786,8 @@
         .controls-hint,
         .help-toggle-chip,
         .hud-bottom-left,
-        .speedo-wrap {
+        .speedo-wrap,
+        #onboarding-pointers {
           display: none !important;
         }
         .horizon-compass-wrap {
@@ -1997,6 +2114,23 @@
       </div>
 
       <div class="micro-toast" id="micro-toast" role="status" aria-live="polite"></div>
+
+      <div id="onboarding-pointers" aria-label="Feature tips">
+        <button type="button" class="pointer-callout callout-map" data-callout="map">
+          <span>Map &amp; Elevation</span>
+          <kbd>M</kbd>
+        </button>
+        <button type="button" class="pointer-callout callout-scene" data-callout="scene">
+          <span>Scene &amp; Weather</span>
+          <kbd>T</kbd>
+        </button>
+        <button type="button" class="pointer-callout callout-help" data-callout="help">
+          <span>GoPro POV</span>
+          <kbd>C</kbd>
+          <span>· Help</span>
+          <kbd>H</kbd>
+        </button>
+      </div>
 
       <div class="hud-bottom">
         <div class="hud-bottom-left">
