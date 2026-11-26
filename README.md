@@ -6,7 +6,7 @@ https://andrewmy.github.io/apex-goat/
 
 ## Controls
 
-Supports both **Keyboard** and **Controller** (PS5 DualSense, Xbox, Switch Pro) with automatic HUD glyph switching and dual-rumble haptic feedback.
+Supports both **Keyboard** and **Controller** with automatic HUD glyph switching and dual-rumble haptic feedback.
 
 | Action                   | Keyboard    | Controller (Xbox / PS)                     |
 | ------------------------ | ----------- | ------------------------------------------ |
