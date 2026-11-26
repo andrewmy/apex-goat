@@ -16,6 +16,18 @@ export class GoatAudio {
   private slideFilter: BiquadFilterNode | null = null;
   private masterGain: GainNode | null = null;
   private initialized = false;
+  private windDuckUntil = 0;
+
+  constructor() {
+    // Ensure any mouse click or keypress unlocks Web Audio even if the user dropped in via gamepad
+    const resumeOnGesture = () => {
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+    };
+    window.addEventListener('pointerdown', resumeOnGesture);
+    window.addEventListener('keydown', resumeOnGesture);
+  }
 
   public unlock(): void {
     if (this.initialized) {
@@ -102,12 +114,14 @@ export class GoatAudio {
     const now = this.ctx.currentTime;
     const speedNorm = Math.min(1, snap.speed / 36);
     const exposureNorm = Math.min(1, snap.exposureHeight / 120);
-    const airBonus = snap.grounded ? 0 : 0.16;
-
     // Alpine wind swells with speed, sheer cliff drop exposure, and big airs
-    const targetWindVol = 0.03 + speedNorm * speedNorm * 0.34 + exposureNorm * 0.06 + airBonus;
-    const targetWindFreq = 240 + speedNorm * 1150 + (snap.grounded ? 0 : 280);
-    this.windGain.gain.setTargetAtTime(targetWindVol, now, 0.06);
+    // (kept balanced + ducked briefly during bleats so vocals & hoof clacks cut through!)
+    const duckMul = now < this.windDuckUntil ? 0.42 : 1.0;
+    const airBonus = snap.grounded ? 0 : 0.08;
+    const targetWindVol =
+      (0.02 + speedNorm * speedNorm * 0.19 + exposureNorm * 0.04 + airBonus) * duckMul;
+    const targetWindFreq = 240 + speedNorm * 1050 + (snap.grounded ? 0 : 240);
+    this.windGain.gain.setTargetAtTime(targetWindVol, now, 0.05);
     this.windFilter.frequency.setTargetAtTime(targetWindFreq, now, 0.06);
 
     // Scree gravel surf / snow slide hiss
@@ -259,48 +273,145 @@ export class GoatAudio {
     });
   }
 
-  /** Cheeky procedural formant goat bleat ("MAAA-AAA-AH!") on B key or bailout */
-  public playBleat(pitchMul = 1.0): void {
+  /** Cheeky, unmistakable dual-formant goat bleat ("MAAA-AAA-AH!") that cuts cleanly over wind */
+  public playBleat(pitchMul = 1.0, volumeMul = 1.0): void {
     if (!this.initialized || !this.ctx || !this.masterGain) return;
     const now = this.ctx.currentTime;
+    this.windDuckUntil = Math.max(this.windDuckUntil, now + 0.55);
 
     const osc = this.ctx.createOscillator();
+    const subOsc = this.ctx.createOscillator();
     const vibrato = this.ctx.createOscillator();
     const vibGain = this.ctx.createGain();
-    const formant = this.ctx.createBiquadFilter();
-    const gain = this.ctx.createGain();
+    const f1 = this.ctx.createBiquadFilter();
+    const f2 = this.ctx.createBiquadFilter();
+    const env = this.ctx.createGain();
 
+    // Dual-oscillator vocal cord source (sawtooth + nasal square harmonic)
+    const basePitch = (295 + Math.random() * 50) * pitchMul;
     osc.type = 'sawtooth';
-    const basePitch = (285 + Math.random() * 55) * pitchMul;
     osc.frequency.setValueAtTime(basePitch, now);
-    osc.frequency.linearRampToValueAtTime(basePitch * 1.12, now + 0.14);
+    osc.frequency.linearRampToValueAtTime(basePitch * 1.14, now + 0.13);
     osc.frequency.exponentialRampToValueAtTime(basePitch * 0.78, now + 0.44);
 
-    // Classic rapid goat vibrato wobble (~22 Hz!)
+    subOsc.type = 'triangle';
+    subOsc.frequency.setValueAtTime(basePitch * 0.5, now);
+    subOsc.frequency.linearRampToValueAtTime(basePitch * 0.56, now + 0.13);
+    subOsc.frequency.exponentialRampToValueAtTime(basePitch * 0.4, now + 0.44);
+
+    // Classic rapid goat vocal wobble (~22 Hz FM + subtle AM tremolo!)
     vibrato.frequency.value = 21 + Math.random() * 4;
-    vibGain.gain.value = 26 * pitchMul;
+    vibGain.gain.value = 28 * pitchMul;
     vibrato.connect(vibGain);
     vibGain.connect(osc.frequency);
 
-    formant.type = 'bandpass';
-    formant.frequency.setValueAtTime(980 * pitchMul, now);
-    formant.frequency.linearRampToValueAtTime(1450 * pitchMul, now + 0.16);
-    formant.frequency.linearRampToValueAtTime(840 * pitchMul, now + 0.44);
-    formant.Q.value = 3.2;
+    // Parallel dual vocal-tract formants (preserves full vocal loudness instead of attenuating!)
+    f1.type = 'peaking';
+    f1.frequency.setValueAtTime(760 * pitchMul, now);
+    f1.frequency.linearRampToValueAtTime(1020 * pitchMul, now + 0.15);
+    f1.frequency.linearRampToValueAtTime(680 * pitchMul, now + 0.44);
+    f1.Q.value = 2.4;
+    f1.gain.value = 10;
 
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.24, now + 0.04);
-    gain.gain.setValueAtTime(0.22, now + 0.3);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.46);
+    f2.type = 'lowpass';
+    f2.frequency.setValueAtTime(2400 * pitchMul, now);
+    f2.Q.value = 2.2;
 
-    osc.connect(formant);
-    formant.connect(gain);
-    gain.connect(this.masterGain);
+    const peak = Math.min(0.95, 0.52 * volumeMul);
+    env.gain.setValueAtTime(0.001, now);
+    env.gain.linearRampToValueAtTime(peak, now + 0.03);
+    env.gain.setValueAtTime(peak * 0.88, now + 0.28);
+    env.gain.exponentialRampToValueAtTime(0.001, now + 0.46);
+
+    osc.connect(f1);
+    subOsc.connect(f1);
+    f1.connect(f2);
+    f2.connect(env);
+    env.connect(this.masterGain);
 
     osc.start(now);
+    subOsc.start(now);
     vibrato.start(now);
     osc.stop(now + 0.48);
+    subOsc.stop(now + 0.48);
     vibrato.stop(now + 0.48);
+  }
+
+  /** Heroic, loud echoing mountain-canyon Apex Bleat ("BAAA-AA-AA!") with alpine echoes */
+  public playApexBleat(): void {
+    if (!this.initialized || !this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    this.windDuckUntil = Math.max(this.windDuckUntil, now + 1.05);
+
+    const osc = this.ctx.createOscillator();
+    const subOsc = this.ctx.createOscillator();
+    const vibrato = this.ctx.createOscillator();
+    const vibGain = this.ctx.createGain();
+    const f1 = this.ctx.createBiquadFilter();
+    const f2 = this.ctx.createBiquadFilter();
+    const dryGain = this.ctx.createGain();
+
+    const base = 340 + Math.random() * 40;
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(base, now);
+    osc.frequency.linearRampToValueAtTime(base * 1.24, now + 0.16);
+    osc.frequency.exponentialRampToValueAtTime(base * 0.84, now + 0.58);
+
+    subOsc.type = 'triangle';
+    subOsc.frequency.setValueAtTime(base * 0.5, now);
+    subOsc.frequency.linearRampToValueAtTime(base * 0.62, now + 0.16);
+    subOsc.frequency.exponentialRampToValueAtTime(base * 0.42, now + 0.58);
+
+    vibrato.frequency.value = 24;
+    vibGain.gain.value = 34;
+    vibrato.connect(vibGain);
+    vibGain.connect(osc.frequency);
+
+    f1.type = 'peaking';
+    f1.frequency.setValueAtTime(920, now);
+    f1.frequency.linearRampToValueAtTime(1420, now + 0.18);
+    f1.frequency.linearRampToValueAtTime(840, now + 0.58);
+    f1.Q.value = 2.6;
+    f1.gain.value = 12;
+
+    f2.type = 'lowpass';
+    f2.frequency.setValueAtTime(2800, now);
+    f2.Q.value = 2.0;
+
+    dryGain.gain.setValueAtTime(0.001, now);
+    dryGain.gain.linearRampToValueAtTime(0.68, now + 0.03);
+    dryGain.gain.setValueAtTime(0.6, now + 0.36);
+    dryGain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+    osc.connect(f1);
+    subOsc.connect(f1);
+    f1.connect(f2);
+    f2.connect(dryGain);
+    dryGain.connect(this.masterGain);
+
+    // 3-tap alpine canyon slapback echoes!
+    const echoTimes = [0.24, 0.52, 0.82];
+    const echoGains = [0.46, 0.25, 0.12];
+    for (let i = 0; i < echoTimes.length; i++) {
+      const delay = this.ctx.createDelay(1.2);
+      delay.delayTime.value = echoTimes[i];
+      const lp = this.ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 1800 - i * 420;
+      const eGain = this.ctx.createGain();
+      eGain.gain.value = echoGains[i];
+      dryGain.connect(delay);
+      delay.connect(lp);
+      lp.connect(eGain);
+      eGain.connect(this.masterGain);
+    }
+
+    osc.start(now);
+    subOsc.start(now);
+    vibrato.start(now);
+    osc.stop(now + 0.62);
+    subOsc.stop(now + 0.62);
+    vibrato.stop(now + 0.62);
   }
 
   /** Snappy horn-lunge whoosh when initiating a Headbutt Ram */

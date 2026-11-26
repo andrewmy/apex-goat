@@ -43,6 +43,8 @@ function createEmptySnapshot(): GoatPhysicsSnapshot {
     airTime: 0,
     gaitPhase: 0,
     headbuttAnim: 0,
+    bleatAnim: 0,
+    apexBleatReady: false,
     exposureHeight: 0,
   };
 }
@@ -370,7 +372,30 @@ class ApexGoatGame {
 
       if (input.bleatJustPressed) {
         this.audio.unlock();
-        this.audio.playBleat();
+        const startled = this.herd.startleNear(this.controller.position, 9.5);
+        const bleatType = this.controller.triggerBleat(startled);
+        if (bleatType === 'apex-air') {
+          this.audio.playApexBleat();
+          this.goatCam.addShake(0.24);
+          this.input.rumble(0.45, 0.7, 110);
+          const airTag = this.controller.airTime > 0.7 ? 'SKY GOAT!' : 'BAAA-NZA!';
+          this.hud.showBanner('APEX BLEAT!', `${airTag} +BOOST`, 950);
+        } else if (bleatType === 'herd-taunt') {
+          this.audio.playApexBleat();
+          this.input.rumble(0.35, 0.55, 95);
+          // Staggered chorus of startled herd goats bleating back!
+          const chorusCount = Math.min(3, startled);
+          for (let i = 0; i < chorusCount; i++) {
+            window.setTimeout(() => this.audio.playBleat(1.18 + Math.random() * 0.25), 85 + i * 75);
+          }
+          this.hud.showBanner(
+            startled > 1 ? `HERD TAUNT ×${startled}!` : 'HERD TAUNT!',
+            'GOATS SCATTERED · +BOOST',
+            900,
+          );
+        } else {
+          this.audio.playBleat();
+        }
       }
       if (input.checkpointJustPressed) {
         this.resetToCheckpoint();

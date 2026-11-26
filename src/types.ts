@@ -82,6 +82,8 @@ export interface GoatPhysicsSnapshot {
   airTime: number;
   gaitPhase: number;
   headbuttAnim: number; // 0..1 horn-charge lunge animation
+  bleatAnim: number; // 0..1 proud skyward bleat animation
+  apexBleatReady: boolean;
   exposureHeight: number; // estimated cliff drop distance right beside player
 }
 

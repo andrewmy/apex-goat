@@ -69,6 +69,8 @@ export class GoatController {
   public headbuttTimer = 0;
   public headbuttCooldown = 0;
   public headbuttAnim = 0;
+  public bleatAnim = 0;
+  public apexBleatCooldown = 0;
 
   private coyoteTimer = 0;
   private wallCoyoteTimer = 0;
@@ -139,11 +141,37 @@ export class GoatController {
     this.headbuttTimer = 0;
     this.headbuttCooldown = 0;
     this.headbuttAnim = 0;
+    this.bleatAnim = 0;
+    this.apexBleatCooldown = 0;
     this.slopeDeg = 0;
   }
 
   public isHeadbutting(): boolean {
     return this.headbuttTimer > 0;
+  }
+
+  /**
+   * Triggers either a classic bleat, a mid-air APEX BLEAT (boost + canyon echo),
+   * or a HERD TAUNT when bleating close to rival goats!
+   */
+  public triggerBleat(startledHerdCount: number): 'apex-air' | 'herd-taunt' | 'normal' {
+    this.bleatAnim = 1.0;
+
+    if (!this.grounded && this.airTime >= 0.22 && this.apexBleatCooldown <= 0) {
+      this.apexBleatCooldown = 1.4;
+      this.velocity.addScaledVector(this.forward, 4.4);
+      this.pumpBoostFlash = Math.max(this.pumpBoostFlash, 0.9);
+      return 'apex-air';
+    }
+
+    if (startledHerdCount > 0 && this.apexBleatCooldown <= 0) {
+      this.apexBleatCooldown = 1.4;
+      this.velocity.addScaledVector(this.forward, 3.6);
+      this.pumpBoostFlash = Math.max(this.pumpBoostFlash, 0.7);
+      return 'herd-taunt';
+    }
+
+    return 'normal';
   }
 
   /** Called when the player rams a solid herd goat or shoulders into one */
@@ -183,6 +211,8 @@ export class GoatController {
     this.justJumpedTimer = Math.max(0, this.justJumpedTimer - dt);
     this.headbuttTimer = Math.max(0, this.headbuttTimer - dt);
     this.headbuttCooldown = Math.max(0, this.headbuttCooldown - dt);
+    this.bleatAnim = Math.max(0, this.bleatAnim - dt * 2.2);
+    this.apexBleatCooldown = Math.max(0, this.apexBleatCooldown - dt);
     const targetHeadbuttAnim = this.headbuttTimer > 0 ? 1 : 0;
     this.headbuttAnim += (targetHeadbuttAnim - this.headbuttAnim) * Math.min(1, dt * 24);
 
@@ -863,6 +893,9 @@ export class GoatController {
     out.airTime = this.airTime;
     out.gaitPhase = this.gaitPhase;
     out.headbuttAnim = this.headbuttAnim;
+    out.bleatAnim = this.bleatAnim;
+    out.apexBleatReady =
+      !this.grounded && this.airTime >= 0.24 && this.velocity.y > -8 && this.apexBleatCooldown <= 0;
     out.exposureHeight = this.exposureHeight;
   }
 }

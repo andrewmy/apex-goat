@@ -273,9 +273,9 @@ export class Hud {
       if (this.pauseTricksEl) {
         this.pauseTricksEl.innerHTML = `
           <div><strong>Headbutt Ram:</strong> Tap <strong>${g.ram}</strong> to lunge horns-first into rival herd goats—blasts them tumbling off the cliff for a +18 km/h boost!</div>
+          <div><strong>Apex Bleat Taunt:</strong> Tap <strong>&uarr; / R3</strong> mid-air for an echoing canyon boost, or near herd goats to startle &amp; scatter them!</div>
           <div><strong>Slope-Pump:</strong> Hold <strong>${g.pump} / ${g.back}</strong> while descending steep slopes (&ge;15&deg;) or diving from air for a huge speed surge.</div>
           <div><strong>Wall-Kick:</strong> Carve onto steep rock (&ge;40&deg;) at speed and tap <strong>${g.jump}</strong> to kick off with a boost.</div>
-          <div><strong>Scree &amp; Snow:</strong> Carve wide drift arcs on dark loose shale &amp; snow for peak downhill speed.</div>
         `;
       }
       if (this.startBtnEl) this.startBtnEl.textContent = `Drop In (Press ${g.jump} / ${g.pause})`;
@@ -301,9 +301,9 @@ export class Hud {
       if (this.pauseTricksEl) {
         this.pauseTricksEl.innerHTML = `
           <div><strong>Headbutt Ram:</strong> Tap <strong>F</strong> to lunge horns-first into rival herd goats—blasts them tumbling off the cliff for a +18 km/h boost!</div>
+          <div><strong>Apex Bleat Taunt:</strong> Tap <strong>B</strong> mid-air for an echoing canyon boost, or near herd goats to startle &amp; scatter them!</div>
           <div><strong>Slope-Pump:</strong> Hold <strong>SHIFT</strong> while descending steep slopes (&ge;15&deg;) or diving from air for a huge speed surge.</div>
           <div><strong>Wall-Kick:</strong> Carve onto steep rock (&ge;40&deg;) at speed and tap <strong>SPACE</strong> to kick off with a boost.</div>
-          <div><strong>Scree &amp; Snow:</strong> Carve wide drift arcs on dark loose shale &amp; snow for peak downhill speed.</div>
         `;
       }
       if (this.startBtnEl) this.startBtnEl.textContent = 'Drop In (Click or Press Space)';
@@ -342,6 +342,7 @@ export class Hud {
     const g = PAD_GLYPHS[this.activeLayout];
     const jumpKey = isPad ? g.jump : 'SPACE';
     const pumpKey = isPad ? `${g.pump}/${g.back}` : 'SHIFT';
+    const bleatKey = isPad ? '↑' : 'B';
 
     const wallKickReady =
       snap.wallRunning || (snap.grounded && snap.slopeDeg >= 40 && snap.speed >= 6.0);
@@ -357,6 +358,9 @@ export class Hud {
     } else if (!snap.grounded && snap.crouching) {
       slopeStr = 'DIVE PUMP ↓ LAND ON SLOPE';
       slopeColor = '#47ff9c';
+    } else if (snap.apexBleatReady) {
+      slopeStr = `APEX BLEAT · ${bleatKey}!`;
+      slopeColor = '#ff9be2';
     } else if (snap.pumpReady) {
       slopeStr = snap.grounded
         ? `PUMP · HOLD ${pumpKey}! (${Math.round(snap.slopeDeg)}°)`

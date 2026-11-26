@@ -87,8 +87,8 @@ export class QuadrupedIK {
       : THREE.MathUtils.clamp(snap.velocity.y * 0.03, -0.45, 0.45) + aerialDivePitch;
     this.rig.bodyPivot.rotation.x = airPitch - snap.crouchAmount * 0.1 - snap.headbuttAnim * 0.22;
 
-    // Neck & Head lunge forward with horns lowered during a Headbutt Ram!
-    this.rig.neckPivot.rotation.x = -snap.headbuttAnim * 0.52;
+    // Neck & Head lunge forward with horns lowered during a Headbutt Ram, or tilt proudly skyward on Bleat!
+    this.rig.neckPivot.rotation.x = -snap.headbuttAnim * 0.52 + snap.bleatAnim * 0.28;
     this.rig.neckPivot.position.z = -0.45 - snap.headbuttAnim * 0.16;
 
     // 3. Head & Horn Stabilization (mountain goats keep their heads eerily level!)
@@ -98,7 +98,8 @@ export class QuadrupedIK {
       -airPitch * 0.65 +
       slopePitchComp * 0.35 +
       Math.sin(snap.gaitPhase * Math.PI * 2 + 0.4) * 0.045 * speedNorm -
-      snap.headbuttAnim * 0.45;
+      snap.headbuttAnim * 0.45 +
+      snap.bleatAnim * 0.38;
     const targetHeadRoll = snap.steerAngle * 0.18;
 
     const smooth = Math.min(1, dt * 16);

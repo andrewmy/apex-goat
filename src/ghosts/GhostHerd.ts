@@ -30,6 +30,7 @@ interface HerdMate {
   knockVel: THREE.Vector3;
   knockAngVel: THREE.Vector3;
   bumpCooldown: number;
+  startleHopTimer: number;
   currentSurface: SurfaceType;
 }
 
@@ -133,6 +134,7 @@ export class GhostHerd {
         knockVel: new THREE.Vector3(),
         knockAngVel: new THREE.Vector3(),
         bumpCooldown: 0,
+        startleHopTimer: 0,
         currentSurface: SurfaceType.Granite,
       });
     }
@@ -157,7 +159,29 @@ export class GhostHerd {
       mate.knockTimer = 0;
       mate.knockVel.set(0, 0, 0);
       mate.bumpCooldown = 0;
+      mate.startleHopTimer = 0;
     }
+  }
+
+  /**
+   * Startles nearby herd goats when the player hits Bleat—making them hop in surprise
+   * and scatter slightly sideways out of your racing line! Returns number startled.
+   */
+  public startleNear(playerPos: THREE.Vector3, radius = 9.0): number {
+    const rSq = radius * radius;
+    let count = 0;
+    for (const mate of this.herd) {
+      if (!mate.initialized || mate.knocked || mate.startleHopTimer > 0) continue;
+      const dx = mate.smoothedPos.x - playerPos.x;
+      const dy = mate.smoothedPos.y + 0.8 - playerPos.y;
+      const dz = mate.smoothedPos.z - playerPos.z;
+      if (dx * dx + dy * dy + dz * dz <= rSq) {
+        mate.startleHopTimer = 0.55;
+        mate.lateralOffset += (dx >= 0 ? 1 : -1) * 1.35;
+        count++;
+      }
+    }
+    return count;
   }
 
   /**
@@ -249,6 +273,9 @@ export class GhostHerd {
     // 1. Update live 10-goat physical herd
     for (const mate of this.herd) {
       mate.bumpCooldown = Math.max(0, mate.bumpCooldown - dt);
+      if (mate.startleHopTimer > 0) {
+        mate.startleHopTimer = Math.max(0, mate.startleHopTimer - dt);
+      }
 
       if (mate.knocked) {
         // Simulate knocked-out goat flying & bouncing wildly off cliffs!
@@ -333,6 +360,12 @@ export class GhostHerd {
         } else {
           this._up.copy(this._sampleUp);
         }
+      }
+
+      if (mate.startleHopTimer > 0) {
+        const hopFrac = 1 - mate.startleHopTimer / 0.55;
+        this._pos.y += Math.sin(hopFrac * Math.PI) * 1.15;
+        airborne = true;
       }
 
       this._fwd.copy(this._sampleTan).projectOnPlane(this._up).normalize();
