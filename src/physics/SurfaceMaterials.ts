@@ -1,0 +1,68 @@
+import { SurfaceConfig, SurfaceType } from '../types';
+
+export const SURFACE_CONFIGS: Record<SurfaceType, SurfaceConfig> = {
+  [SurfaceType.Granite]: {
+    id: SurfaceType.Granite,
+    name: 'GRANITE',
+    colorHex: '#d9d2c5',
+    lateralGrip: 1.12,
+    accelMul: 1.05,
+    downhillSlideBoost: 1.0,
+    drag: 0.22,
+    maxUprightSlopeDeg: 62,
+    maxCrouchSlopeDeg: 78,
+    jumpMul: 1.06,
+    landingRetention: 0.94,
+    particleColor: 0xbcb5a8,
+    particleIntensity: 0.65,
+  },
+  [SurfaceType.Scree]: {
+    id: SurfaceType.Scree,
+    name: 'LOOSE SCREE',
+    colorHex: '#ffbe6b',
+    lateralGrip: 0.44,
+    accelMul: 0.85,
+    downhillSlideBoost: 1.62,
+    drag: 0.08,
+    maxUprightSlopeDeg: 68,
+    maxCrouchSlopeDeg: 82,
+    jumpMul: 0.92,
+    landingRetention: 1.04,
+    particleColor: 0x6d7078,
+    particleIntensity: 1.85,
+  },
+  [SurfaceType.Snow]: {
+    id: SurfaceType.Snow,
+    name: 'ALPINE SNOW',
+    colorHex: '#9be7ff',
+    lateralGrip: 0.36,
+    accelMul: 0.78,
+    downhillSlideBoost: 1.48,
+    drag: 0.06,
+    maxUprightSlopeDeg: 66,
+    maxCrouchSlopeDeg: 80,
+    jumpMul: 0.96,
+    landingRetention: 1.06,
+    particleColor: 0xeef7ff,
+    particleIntensity: 1.4,
+  },
+  [SurfaceType.Turf]: {
+    id: SurfaceType.Turf,
+    name: 'ALPINE TURF',
+    colorHex: '#84f09a',
+    lateralGrip: 1.25,
+    accelMul: 1.1,
+    downhillSlideBoost: 0.9,
+    drag: 0.34,
+    maxUprightSlopeDeg: 58,
+    maxCrouchSlopeDeg: 74,
+    jumpMul: 1.02,
+    landingRetention: 0.98,
+    particleColor: 0x5c7344,
+    particleIntensity: 0.75,
+  },
+};
+
+export function getSurfaceConfig(type: SurfaceType): SurfaceConfig {
+  return SURFACE_CONFIGS[type] ?? SURFACE_CONFIGS[SurfaceType.Granite];
+}
