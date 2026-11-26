@@ -40,6 +40,8 @@ export class InputManager {
     checkpoint: false,
     camToggle: false,
     pause: false,
+    muteToggle: false,
+    helpToggle: false,
   };
 
   private onKeyDownBound: (e: KeyboardEvent) => void;
@@ -89,6 +91,8 @@ export class InputManager {
       if (code === 'Backspace') this.pendingActions.checkpoint = true;
       if (code === 'KeyC') this.pendingActions.camToggle = true;
       if (code === 'Escape' || code === 'KeyP') this.pendingActions.pause = true;
+      if (code === 'KeyU') this.pendingActions.muteToggle = true;
+      if (code === 'KeyH') this.pendingActions.helpToggle = true;
     }
     this.keys.add(code);
   }
@@ -145,6 +149,8 @@ export class InputManager {
     let cameraToggleJustPressed = this.pendingActions.camToggle;
     let pauseJustPressed = this.pendingActions.pause;
     let backJustPressed = false;
+    const muteToggleJustPressed = this.pendingActions.muteToggle;
+    const helpToggleJustPressed = this.pendingActions.helpToggle;
 
     // Poll standard HTML5 Gamepad API if connected
     let gamepadConnected = false;
@@ -268,6 +274,8 @@ export class InputManager {
     this.pendingActions.checkpoint = false;
     this.pendingActions.camToggle = false;
     this.pendingActions.pause = false;
+    this.pendingActions.muteToggle = false;
+    this.pendingActions.helpToggle = false;
 
     return {
       device: this.activeDevice,
@@ -288,6 +296,8 @@ export class InputManager {
       cameraToggleJustPressed,
       pauseJustPressed,
       backJustPressed,
+      muteToggleJustPressed,
+      helpToggleJustPressed,
     };
   }
 

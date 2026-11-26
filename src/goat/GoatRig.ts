@@ -1,5 +1,22 @@
 import * as THREE from 'three';
 
+export type GoatCoatId = 'alpine' | 'ibex' | 'slate' | 'gold';
+
+export interface GoatCoatPreset {
+  id: GoatCoatId;
+  label: string;
+  coatColor: number;
+  accentColor: number;
+  swatch: string;
+}
+
+export const GOAT_COAT_PRESETS: readonly GoatCoatPreset[] = [
+  { id: 'alpine', label: 'Alpine', coatColor: 0xf4f0e6, accentColor: 0xe2d9c8, swatch: '#f4f0e6' },
+  { id: 'ibex', label: 'Ibex', coatColor: 0xc29e76, accentColor: 0x8f6b47, swatch: '#c29e76' },
+  { id: 'slate', label: 'Slate', coatColor: 0x627082, accentColor: 0x3b4656, swatch: '#627082' },
+  { id: 'gold', label: 'Gold', coatColor: 0xe8be62, accentColor: 0xb98a36, swatch: '#e8be62' },
+];
+
 export interface LegJoints {
   hip: THREE.Group; // mounted on torso
   upper: THREE.Group;
@@ -107,6 +124,7 @@ export class GoatRig {
   public readonly legs: LegJoints[] = [];
 
   private readonly coatMat: THREE.MeshStandardMaterial;
+  private readonly woolAccentMat: THREE.MeshStandardMaterial;
   private readonly darkMat: THREE.MeshStandardMaterial;
 
   constructor(options?: {
@@ -132,7 +150,7 @@ export class GoatRig {
       opacity,
     });
 
-    const woolAccentMat = new THREE.MeshStandardMaterial({
+    this.woolAccentMat = new THREE.MeshStandardMaterial({
       color: accentHex,
       roughness: 0.94,
       flatShading: true,
@@ -188,7 +206,7 @@ export class GoatRig {
     this.bodyPivot.add(hump);
 
     // Shaggy hindquarters wool
-    const rump = new THREE.Mesh(assets.rumpGeo, woolAccentMat);
+    const rump = new THREE.Mesh(assets.rumpGeo, this.woolAccentMat);
     rump.scale.set(0.85, 0.9, 1.05);
     rump.position.set(0, 0.04, 0.36);
     rump.castShadow = castsShadow;
@@ -230,7 +248,7 @@ export class GoatRig {
     this.neckPivot.add(neckMesh);
 
     // Shaggy throat ruff
-    const ruff = new THREE.Mesh(assets.ruffGeo, woolAccentMat);
+    const ruff = new THREE.Mesh(assets.ruffGeo, this.woolAccentMat);
     ruff.rotation.x = Math.PI - 0.3;
     ruff.position.set(0, -0.02, -0.14);
     this.neckPivot.add(ruff);
@@ -244,7 +262,7 @@ export class GoatRig {
     skull.castShadow = castsShadow;
     this.headPivot.add(skull);
 
-    const muzzle = new THREE.Mesh(assets.muzzleGeo, woolAccentMat);
+    const muzzle = new THREE.Mesh(assets.muzzleGeo, this.woolAccentMat);
     muzzle.position.set(0, -0.05, -0.2);
     muzzle.rotation.x = 0.22;
     this.headPivot.add(muzzle);
@@ -343,7 +361,7 @@ export class GoatRig {
       lower.position.set(0, -upperLen, 0);
       upper.add(lower);
 
-      const lowerMesh = new THREE.Mesh(assets.lowerLegGeo, woolAccentMat);
+      const lowerMesh = new THREE.Mesh(assets.lowerLegGeo, this.woolAccentMat);
       lowerMesh.position.set(0, -lowerLen * 0.5, 0);
       lowerMesh.castShadow = castsShadow;
       lower.add(lowerMesh);
@@ -365,6 +383,12 @@ export class GoatRig {
         isLeft: spec.isLeft,
       });
     }
+  }
+
+  /** Live coat palette update for the Start Modal showcase */
+  public setCoatColors(coatHex: number, accentHex: number): void {
+    this.coatMat.color.setHex(coatHex);
+    this.woolAccentMat.color.setHex(accentHex);
   }
 
   /** Hide rear body / GoPro mesh slightly if needed during GoPro POV to avoid clipping */

@@ -83,6 +83,11 @@
         align-items: flex-start;
         gap: 16px;
       }
+      .hud-top-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
       .gopro-rec {
         display: flex;
         align-items: center;
@@ -96,6 +101,34 @@
         font-weight: 700;
         letter-spacing: 0.12em;
         text-transform: uppercase;
+      }
+      .mute-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        pointer-events: auto;
+        cursor: pointer;
+        background: rgba(28, 14, 18, 0.66);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 118, 118, 0.5);
+        border-radius: 999px;
+        padding: 5px 10px;
+        color: #ffb8b8;
+        font-family: inherit;
+        font-size: 10.5px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        transition:
+          background 0.12s ease,
+          border-color 0.12s ease;
+      }
+      .mute-indicator:hover {
+        background: rgba(48, 18, 24, 0.82);
+        border-color: rgba(255, 138, 138, 0.8);
+      }
+      .mute-indicator.hidden {
+        display: none;
       }
       .rec-dot {
         width: 8px;
@@ -302,21 +335,181 @@
         text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
       }
 
+      /* Lighter Crash / Wipeout Toast */
+      .wipeout-toast {
+        position: fixed;
+        top: 19%;
+        left: 50%;
+        transform: translateX(-50%) translateY(-6px);
+        min-width: 248px;
+        max-width: min(360px, 88vw);
+        padding: 10px 18px 11px;
+        border-radius: 14px;
+        background: rgba(20, 8, 12, 0.76);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 92, 92, 0.7);
+        box-shadow:
+          0 12px 32px rgba(0, 0, 0, 0.45),
+          inset 0 1px 0 rgba(255, 175, 175, 0.24);
+        text-align: center;
+        pointer-events: none;
+        opacity: 0;
+        z-index: 16;
+        transition:
+          opacity 0.14s ease,
+          transform 0.14s ease;
+      }
+      .wipeout-toast.visible {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+      .wipeout-title {
+        font-size: 15px;
+        font-weight: 900;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #ff9898;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.75);
+      }
+      .wipeout-sub {
+        margin-top: 3px;
+        font-size: 11.5px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        color: rgba(255, 236, 236, 0.94);
+        text-shadow: 0 1px 6px rgba(0, 0, 0, 0.75);
+      }
+      .wipeout-bar {
+        margin-top: 7px;
+        height: 3px;
+        border-radius: 99px;
+        background: rgba(255, 255, 255, 0.14);
+        overflow: hidden;
+      }
+      .wipeout-bar-fill {
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(90deg, #ff5b5b, #ffae78);
+        transition: width 0.05s linear;
+      }
+
+      /* Subtle Utility Micro-Toast (Audio Mute, etc.) */
+      .micro-toast {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%) translateY(8px);
+        padding: 7px 14px;
+        border-radius: 999px;
+        background: rgba(12, 20, 34, 0.68);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.34);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #eef6ff;
+        pointer-events: none;
+        opacity: 0;
+        z-index: 32;
+        transition:
+          opacity 0.16s ease,
+          transform 0.16s ease;
+      }
+      .micro-toast.visible {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+
       .hud-bottom {
         display: flex;
         justify-content: space-between;
         align-items: flex-end;
         gap: 16px;
       }
-      .controls-hint {
-        background: rgba(8, 12, 20, 0.55);
+      .hud-bottom-left {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding-bottom: 22px;
+      }
+      .help-toggle-chip {
+        pointer-events: auto;
+        cursor: pointer;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 999px;
+        background: rgba(10, 16, 28, 0.44);
         backdrop-filter: blur(8px);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 12px;
-        padding: 10px 14px;
+        color: rgba(232, 242, 255, 0.78);
+        padding: 5px 11px;
+        font-family: inherit;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+        transition:
+          background 0.12s ease,
+          color 0.12s ease,
+          border-color 0.12s ease;
+      }
+      .help-toggle-chip:hover {
+        background: rgba(14, 24, 42, 0.72);
+        border-color: rgba(95, 243, 255, 0.48);
+        color: #ffffff;
+      }
+      .help-toggle-chip.hidden {
+        display: none;
+      }
+      .controls-hint {
+        display: none;
+        pointer-events: auto;
+        background: linear-gradient(165deg, rgba(14, 22, 38, 0.66), rgba(8, 14, 24, 0.74));
+        backdrop-filter: blur(14px) saturate(135%);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 14px;
+        padding: 10px 14px 11px;
         font-size: 11px;
-        line-height: 1.65;
-        color: rgba(235, 244, 255, 0.84);
+        line-height: 1.7;
+        color: rgba(235, 244, 255, 0.9);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.22),
+          0 12px 30px rgba(0, 0, 0, 0.36);
+      }
+      .controls-hint.visible {
+        display: block;
+      }
+      .controls-hint-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 5px;
+        padding-bottom: 5px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        font-size: 9.5px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #74f0ff;
+      }
+      .controls-hint-close {
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        color: rgba(220, 236, 255, 0.62);
+        font-family: inherit;
+        font-size: 9.5px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 0;
+      }
+      .controls-hint-close:hover {
+        color: #fff;
       }
       .controls-hint kbd {
         display: inline-block;
@@ -434,16 +627,15 @@
         border: 1px solid rgba(255, 255, 255, 0.12);
       }
 
-      /* Finish / Start Overlay */
+      /* Frosted Glass Start / Pause / Finish Overlays */
       #start-overlay {
         position: fixed;
         inset: 0;
         background: radial-gradient(
           circle at 50% 42%,
-          rgba(12, 22, 38, 0.55),
-          rgba(6, 10, 18, 0.86)
+          rgba(8, 16, 28, 0.14),
+          rgba(6, 12, 22, 0.44)
         );
-        backdrop-filter: blur(6px);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -455,97 +647,187 @@
         pointer-events: none;
       }
       .modal-card {
-        max-width: 520px;
+        max-width: 480px;
         width: 92%;
         max-height: calc(100dvh - 28px);
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
-        background: rgba(12, 18, 30, 0.88);
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        border-radius: 20px;
-        padding: 28px 32px;
+        background: linear-gradient(165deg, rgba(16, 26, 42, 0.56), rgba(10, 16, 28, 0.66));
+        backdrop-filter: blur(18px) saturate(145%);
+        -webkit-backdrop-filter: blur(18px) saturate(145%);
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        border-radius: 22px;
+        padding: 24px 28px;
         text-align: center;
-        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.35),
+          0 24px 60px rgba(0, 0, 0, 0.35);
       }
       .modal-kicker {
-        font-size: 11px;
+        font-size: 10.5px;
         font-weight: 800;
         letter-spacing: 0.2em;
         text-transform: uppercase;
-        color: #5ee6ff;
+        color: #74f0ff;
+        text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
       }
       .modal-title {
         font-size: 38px;
         font-weight: 900;
         letter-spacing: -0.02em;
-        margin-top: 6px;
+        margin-top: 4px;
+        text-shadow: 0 3px 18px rgba(0, 0, 0, 0.38);
       }
       .modal-desc {
-        margin-top: 10px;
-        font-size: 14px;
-        line-height: 1.55;
-        color: rgba(226, 236, 250, 0.82);
+        margin-top: 8px;
+        font-size: 13.5px;
+        line-height: 1.5;
+        color: rgba(235, 243, 255, 0.88);
+      }
+      /* Live 3D Start Modal Selectors (Camera, Coat, + reserved slot for Scene in Session 2) */
+      .start-selectors {
+        margin-top: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        text-align: left;
+      }
+      .selector-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 7px 10px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      .selector-label {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(215, 232, 252, 0.72);
+        white-space: nowrap;
+      }
+      .seg-group {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 4px;
+      }
+      .seg-pill {
+        pointer-events: auto;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        padding: 5px 10px;
+        font-family: inherit;
+        font-size: 10.5px;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: rgba(228, 239, 255, 0.76);
+        background: rgba(255, 255, 255, 0.05);
+        transition: all 0.12s ease;
+      }
+      .seg-pill:hover {
+        color: #ffffff;
+        background: rgba(255, 255, 255, 0.13);
+      }
+      .seg-pill.active {
+        color: #06131f;
+        background: #5ff3ff;
+        border-color: rgba(255, 255, 255, 0.45);
+        box-shadow: 0 2px 10px rgba(95, 243, 255, 0.32);
+      }
+      .coat-swatch {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        border: 1px solid rgba(0, 0, 0, 0.35);
+        flex-shrink: 0;
       }
       .modal-tips {
-        margin-top: 16px;
+        margin-top: 13px;
         text-align: left;
-        background: rgba(255, 255, 255, 0.05);
+        background: rgba(6, 12, 22, 0.28);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 12px;
-        padding: 12px 16px;
-        font-size: 12.5px;
-        line-height: 1.65;
-        color: rgba(232, 242, 255, 0.88);
+        padding: 10px 14px;
+        font-size: 12px;
+        line-height: 1.58;
+        color: rgba(235, 244, 255, 0.88);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
       }
       .modal-tips strong {
         color: #74f0ff;
       }
       .play-btn {
-        margin-top: 20px;
+        margin-top: 16px;
+        width: 100%;
         pointer-events: auto;
         cursor: pointer;
         border: none;
         border-radius: 12px;
-        padding: 13px 28px;
-        font-size: 15px;
+        padding: 13px 24px;
+        font-size: 14.5px;
         font-weight: 800;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.07em;
         text-transform: uppercase;
         color: #06131f;
         background: linear-gradient(135deg, #5ff3ff, #4aff9c);
-        box-shadow: 0 8px 24px rgba(74, 255, 156, 0.32);
+        box-shadow: 0 8px 24px rgba(74, 255, 156, 0.34);
         transition:
           transform 0.12s ease,
           box-shadow 0.12s ease;
       }
       .play-btn:hover {
         transform: translateY(-1px);
-        box-shadow: 0 12px 28px rgba(74, 255, 156, 0.45);
+        box-shadow: 0 12px 28px rgba(74, 255, 156, 0.48);
       }
       .secondary-btn {
         pointer-events: auto;
         cursor: pointer;
         border: 1px solid rgba(255, 255, 255, 0.22);
-        border-radius: 12px;
-        padding: 11px 20px;
-        font-size: 13px;
+        border-radius: 11px;
+        padding: 10px 14px;
+        font-family: inherit;
+        font-size: 12px;
         font-weight: 700;
         letter-spacing: 0.06em;
         text-transform: uppercase;
         color: #eaf3ff;
-        background: rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.09);
         transition:
           background 0.12s ease,
+          border-color 0.12s ease,
           transform 0.12s ease;
       }
       .secondary-btn:hover {
-        background: rgba(255, 255, 255, 0.16);
+        background: rgba(255, 255, 255, 0.18);
         transform: translateY(-1px);
       }
+      .secondary-btn.muted {
+        border-color: rgba(255, 118, 118, 0.5);
+        color: #ffc2c2;
+        background: rgba(64, 18, 24, 0.42);
+      }
       .pause-actions {
-        margin-top: 16px;
+        margin-top: 14px;
         display: flex;
         flex-direction: column;
-        gap: 9px;
+        gap: 8px;
+      }
+      .pause-actions-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
       }
       .pause-tabs {
         margin-top: 14px;
@@ -629,8 +911,9 @@
       #pause-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(6, 10, 18, 0.68);
-        backdrop-filter: blur(8px);
+        background: rgba(8, 14, 24, 0.32);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -645,40 +928,63 @@
       #finish-overlay {
         position: fixed;
         inset: 0;
-        background: radial-gradient(
-          circle at 50% 45%,
-          rgba(10, 20, 34, 0.25),
-          rgba(6, 10, 18, 0.72)
-        );
-        backdrop-filter: blur(4px);
+        background: linear-gradient(to top, rgba(6, 12, 22, 0.55) 0%, rgba(6, 12, 22, 0) 55%);
+        backdrop-filter: none;
         display: flex;
-        align-items: center;
+        align-items: flex-end;
         justify-content: center;
+        padding: 0 16px 28px;
         z-index: 24;
         transition: opacity 0.25s ease;
       }
+      .finish-card {
+        max-width: 540px;
+        padding: 18px 24px 20px;
+      }
+      .finish-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .finish-header-left {
+        text-align: left;
+      }
+      .finish-pb-badge {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #7ac7ff;
+        font-variant-numeric: tabular-nums;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(122, 199, 255, 0.12);
+        border: 1px solid rgba(122, 199, 255, 0.28);
+      }
       .finish-stats {
-        margin-top: 16px;
+        margin-top: 12px;
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 9px;
+        gap: 8px;
       }
       .finish-stat {
         background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.14);
         border-radius: 12px;
-        padding: 10px 12px;
+        padding: 8px 10px;
       }
       .finish-stat-label {
-        font-size: 10px;
+        font-size: 9.5px;
         font-weight: 700;
         letter-spacing: 0.14em;
         text-transform: uppercase;
-        color: rgba(220, 234, 252, 0.65);
+        color: rgba(220, 234, 252, 0.68);
       }
       .finish-stat-val {
-        margin-top: 3px;
-        font-size: 20px;
+        margin-top: 2px;
+        font-size: 18px;
         font-weight: 900;
         font-variant-numeric: tabular-nums;
       }
@@ -1124,8 +1430,42 @@
         .gopro-rec,
         .medals-pill,
         .controls-hint,
+        .help-toggle-chip,
+        .hud-bottom-left,
         .speedo-wrap {
           display: none !important;
+        }
+        .mute-indicator {
+          backdrop-filter: none;
+          background: rgba(28, 14, 18, 0.82);
+          padding: 4px 8px;
+          font-size: 9.5px;
+        }
+        .wipeout-toast {
+          top: 23%;
+          backdrop-filter: none;
+          background: rgba(24, 10, 14, 0.82);
+          padding: 8px 14px 9px;
+          min-width: 210px;
+        }
+        .micro-toast {
+          bottom: 212px;
+          backdrop-filter: none;
+          background: rgba(12, 20, 34, 0.84);
+        }
+        #finish-overlay {
+          padding: 0 12px max(18px, env(safe-area-inset-bottom));
+        }
+        .finish-card {
+          padding: 15px 16px 16px;
+        }
+        .selector-row {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 6px;
+        }
+        .seg-group {
+          justify-content: flex-start;
         }
         #mobile-util-bar {
           display: grid;
@@ -1247,23 +1587,34 @@
 
     <div id="hud">
       <div class="hud-top">
-        <div class="gopro-rec">
-          <span class="rec-dot"></span>
-          <span id="cam-label">CHASE CAM · -- FPS</span>
-        </div>
+        <div class="hud-top-left">
+          <div class="gopro-rec">
+            <span class="rec-dot"></span>
+            <span id="cam-label">CHASE CAM · -- FPS</span>
+          </div>
 
-        <div id="mobile-util-bar" aria-label="Quick actions">
-          <button type="button" class="hud-icon-btn" id="hud-btn-pause" aria-label="Pause">
-            ⏸
-          </button>
-          <button type="button" class="hud-icon-btn" id="hud-btn-restart" aria-label="Restart">
-            ↺
-          </button>
-          <button type="button" class="hud-icon-btn" id="hud-btn-cp" aria-label="Last checkpoint">
-            ⚑
-          </button>
-          <button type="button" class="hud-icon-btn" id="hud-btn-cam" aria-label="Toggle camera">
-            🎥
+          <div id="mobile-util-bar" aria-label="Quick actions">
+            <button type="button" class="hud-icon-btn" id="hud-btn-pause" aria-label="Pause">
+              ⏸
+            </button>
+            <button type="button" class="hud-icon-btn" id="hud-btn-restart" aria-label="Restart">
+              ↺
+            </button>
+            <button type="button" class="hud-icon-btn" id="hud-btn-cp" aria-label="Last checkpoint">
+              ⚑
+            </button>
+            <button type="button" class="hud-icon-btn" id="hud-btn-cam" aria-label="Toggle camera">
+              🎥
+            </button>
+          </div>
+
+          <button
+            type="button"
+            class="mute-indicator hidden"
+            id="mute-indicator"
+            aria-label="Audio muted — click to unmute"
+          >
+            🔇 MUTED
           </button>
         </div>
 
@@ -1316,16 +1667,37 @@
         <div class="banner-sub" id="banner-sub">-0.42s AHEAD</div>
       </div>
 
+      <div class="wipeout-toast" id="wipeout-toast" role="status" aria-live="polite">
+        <div class="wipeout-title" id="wipeout-title">WIPEOUT</div>
+        <div class="wipeout-sub" id="wipeout-sub">Recovering…</div>
+        <div class="wipeout-bar">
+          <div class="wipeout-bar-fill" id="wipeout-bar-fill"></div>
+        </div>
+      </div>
+
+      <div class="micro-toast" id="micro-toast" role="status" aria-live="polite"></div>
+
       <div class="hud-bottom">
-        <div class="controls-hint" id="controls-hint">
-          <div>
-            <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Sprint &amp; Carve ·
-            <kbd>SPACE</kbd> Leap
-          </div>
-          <div><kbd>SHIFT</kbd> Pump / Dive · <kbd>F</kbd> Headbutt Ram · <kbd>B</kbd> Bleat</div>
-          <div>
-            <kbd>R</kbd> Restart · <kbd>BKSP</kbd> Checkpoint · <kbd>C</kbd> Camera ·
-            <kbd>ESC</kbd>/<kbd>P</kbd> Pause
+        <div class="hud-bottom-left">
+          <button type="button" class="help-toggle-chip" id="help-toggle-chip">HELP · H</button>
+          <div class="controls-hint" id="controls-hint">
+            <div class="controls-hint-head">
+              <span>Controls</span>
+              <button type="button" class="controls-hint-close" id="controls-hint-close">
+                H · Hide
+              </button>
+            </div>
+            <div id="controls-hint-body">
+              <div>
+                <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Sprint &amp; Carve ·
+                <kbd>SPACE</kbd> Leap
+              </div>
+              <div><kbd>SHIFT</kbd> Pump / Dive · <kbd>F</kbd> Ram · <kbd>B</kbd> Bleat</div>
+              <div>
+                <kbd>R</kbd> Restart · <kbd>BKSP</kbd> CP · <kbd>C</kbd> Cam · <kbd>U</kbd> Audio ·
+                <kbd>ESC</kbd> Pause
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1439,27 +1811,52 @@
 
     <div id="start-overlay">
       <div class="modal-card">
-        <div class="modal-kicker">Alpine Cliff Descent Prototype</div>
+        <div class="modal-kicker">The Goat Spire · 765m Vertical Descent</div>
         <div class="modal-title">APEX GOAT</div>
         <div class="modal-desc">
-          Drop off <strong>The Goat Spire</strong> alongside the mountain herd. Thread razor
-          limestone ledges, surf 70° scree chutes, and pump landings for insane speed.
+          Carve razor limestone ledges alongside the mountain herd, pump steep rollers for insane
+          speed, and chase your ghost.
         </div>
+
+        <div class="start-selectors" id="start-selectors">
+          <div class="selector-row">
+            <span class="selector-label">Camera</span>
+            <div class="seg-group" role="group" aria-label="Camera mode">
+              <button type="button" class="seg-pill active" data-start-cam="chase">Chase</button>
+              <button type="button" class="seg-pill" data-start-cam="gopro">GoPro POV</button>
+            </div>
+          </div>
+          <div class="selector-row">
+            <span class="selector-label">Coat</span>
+            <div class="seg-group" role="group" aria-label="Mountain goat coat">
+              <button type="button" class="seg-pill active" data-start-coat="alpine">
+                <span class="coat-swatch" style="background: #f4f0e6"></span>Alpine
+              </button>
+              <button type="button" class="seg-pill" data-start-coat="ibex">
+                <span class="coat-swatch" style="background: #c29e76"></span>Ibex
+              </button>
+              <button type="button" class="seg-pill" data-start-coat="slate">
+                <span class="coat-swatch" style="background: #627082"></span>Slate
+              </button>
+              <button type="button" class="seg-pill" data-start-coat="gold">
+                <span class="coat-swatch" style="background: #e8be62"></span>Gold
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="modal-tips" id="start-tips">
           <div>
-            <strong>Slope-Pumping (SHIFT):</strong> Hold <strong>SHIFT</strong> in mid-air to
-            fast-dive onto steep roller backsides—landing crouched converts drop into a massive
-            speed surge!
+            <strong>Slope-Pump (SHIFT):</strong> Dive onto steep backsides to convert drop into a
+            massive speed surge.
           </div>
           <div>
-            <strong>Climbing &amp; Wall-Kicks:</strong> Hold <strong>W</strong> to claw up steep
-            granite, or carve onto steep cliff walls at speed and tap <strong>SPACE</strong> to
-            Wall-Kick.
+            <strong>Ram (F) &amp; Wall-Kick (SPACE):</strong> Blast herd goats (+18 km/h) or kick
+            off steep walls.
           </div>
           <div>
-            <strong>Cameras &amp; Instant Loop:</strong> Starts in Chase Cam; press
-            <strong>C</strong> for GoPro Action POV, <strong>R</strong> for instant restart, or
-            <strong>BKSP</strong> for last checkpoint.
+            <strong>Quick Keys:</strong> <strong>C</strong> Cam · <strong>R</strong> Restart ·
+            <strong>U</strong> Audio · <strong>H</strong> Controls.
           </div>
         </div>
         <button class="play-btn" id="start-btn">Drop In (Click or Press Space)</button>
@@ -1530,6 +1927,10 @@
             <div class="bind-act">Camera / Bleat / Pause</div>
             <div class="bind-key">C / B / ESC</div>
             <div class="bind-pad" id="bind-pad-misc">VIEW / &uarr; / MENU</div>
+
+            <div class="bind-act">Audio Mute / Help Card</div>
+            <div class="bind-key">U / H</div>
+            <div class="bind-pad">In Pause</div>
           </div>
           <div class="gp-status" id="gp-status">
             ○ NO CONTROLLER DETECTED (PLUG IN &amp; PRESS ANY BUTTON)
@@ -1548,16 +1949,28 @@
         <div class="pause-actions">
           <button class="play-btn" style="margin-top: 0" id="resume-btn">Resume (ESC / P)</button>
           <button class="secondary-btn" id="pause-restart-btn">Restart Run (R)</button>
-          <button class="secondary-btn" id="pause-cam-btn">Toggle Camera (C)</button>
+          <div class="pause-actions-row">
+            <button class="secondary-btn" id="pause-cam-btn">Camera (C)</button>
+            <button class="secondary-btn" id="pause-audio-btn">🔊 Audio: On (U)</button>
+          </div>
         </div>
       </div>
     </div>
 
     <div id="finish-overlay" class="hidden">
-      <div class="modal-card" style="max-width: 440px">
-        <div class="modal-kicker" id="fin-medal-kicker">RUN COMPLETE</div>
-        <div class="modal-title" id="fin-time-title" style="font-size: 44px">00:39.42</div>
-        <div class="modal-desc" id="fin-pb-note" style="color: #47ff9c; font-weight: 700">
+      <div class="modal-card finish-card">
+        <div class="finish-header">
+          <div class="finish-header-left">
+            <div class="modal-kicker" id="fin-medal-kicker">RUN COMPLETE</div>
+            <div class="modal-title" id="fin-time-title" style="font-size: 38px">00:39.42</div>
+          </div>
+          <div class="finish-pb-badge">PB <span id="finish-pb">--:--.--</span></div>
+        </div>
+        <div
+          class="modal-desc"
+          id="fin-pb-note"
+          style="color: #47ff9c; font-weight: 700; text-align: left; margin-top: 4px"
+        >
           NEW PERSONAL BEST!
         </div>
         <div class="finish-stats">
@@ -1574,7 +1987,7 @@
             <div class="finish-stat-val" id="fin-style-val" style="color: #74f0ff">0</div>
           </div>
         </div>
-        <div class="pause-actions">
+        <div class="pause-actions" style="margin-top: 12px">
           <button class="play-btn" style="margin-top: 0" id="finish-retry-btn">
             Race Your Ghost (R / Space)
           </button>

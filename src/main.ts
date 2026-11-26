@@ -5,9 +5,9 @@ import { AlpineEnvironment } from './world/Environment';
 import { AlpineCourse } from './world/AlpineCourse';
 import { CheckpointManager } from './world/Checkpoints';
 import { GoatController } from './physics/GoatController';
-import { GoatRig } from './goat/GoatRig';
+import { GOAT_COAT_PRESETS, GoatCoatId, GoatRig } from './goat/GoatRig';
 import { QuadrupedIK } from './goat/QuadrupedIK';
-import { GoatCamera } from './camera/GoatCamera';
+import { CameraMode, GoatCamera } from './camera/GoatCamera';
 import { GoatAudio } from './audio/GoatAudio';
 import { PebbleParticles } from './vfx/PebbleParticles';
 import { GhostRecorder } from './ghosts/GhostRecorder';
@@ -54,6 +54,20 @@ function createEmptySnapshot(): GoatPhysicsSnapshot {
   };
 }
 
+const COAT_STORAGE_KEY = 'apex-goat-coat-v1';
+
+function loadSavedCoatId(): GoatCoatId {
+  try {
+    const raw = window.localStorage.getItem(COAT_STORAGE_KEY);
+    if (raw && GOAT_COAT_PRESETS.some((p) => p.id === raw)) {
+      return raw as GoatCoatId;
+    }
+  } catch {
+    // Ignore storage errors
+  }
+  return 'alpine';
+}
+
 class ApexGoatGame {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene: THREE.Scene;
@@ -84,6 +98,8 @@ class ApexGoatGame {
   private finishOverlayEl!: HTMLElement;
   private rotateOverlayEl!: HTMLElement;
   private togglePauseTab!: () => void;
+  private syncStartCamPills!: (mode: CameraMode) => void;
+  private currentCoatId: GoatCoatId = loadSavedCoatId();
   private maxRunSpeedKmh = 0;
   private lastTrackedInputDevice: InputDevice | null = null;
   private accumulator = 0;
@@ -117,14 +133,17 @@ class ApexGoatGame {
     this.checkpoints = new CheckpointManager(this.course.checkpoints);
     this.controller = new GoatController(this.course);
 
+    const initialCoat =
+      GOAT_COAT_PRESETS.find((p) => p.id === this.currentCoatId) ?? GOAT_COAT_PRESETS[0];
     this.rig = new GoatRig({
-      coatColor: 0xf4f0e6,
-      accentColor: 0xe2d9c8,
+      coatColor: initialCoat.coatColor,
+      accentColor: initialCoat.accentColor,
     });
     this.scene.add(this.rig.root);
     this.ik = new QuadrupedIK(this.rig, this.course);
 
     this.goatCam = new GoatCamera(window.innerWidth / window.innerHeight);
+    this.goatCam.startOrbit = true;
     this.audio = new GoatAudio();
     this.particles = new PebbleParticles(this.scene);
     this.recorder = new GhostRecorder();
@@ -135,6 +154,8 @@ class ApexGoatGame {
 
     this.hud.setPersonalBest(this.recorder.personalBest?.totalTime ?? null);
     this.hud.setCameraMode(this.goatCam.mode);
+    this.hud.setAudioMuted(this.audio.isMuted());
+    this.hud.setControlsHelpVisible(false);
 
     this.bindUiEvents();
     const onViewportResize = () => {
@@ -183,14 +204,35 @@ class ApexGoatGame {
     }
   }
 
+  private applyCoat(coatId: GoatCoatId): void {
+    const preset = GOAT_COAT_PRESETS.find((p) => p.id === coatId);
+    if (!preset) return;
+    this.currentCoatId = preset.id;
+    this.rig.setCoatColors(preset.coatColor, preset.accentColor);
+    try {
+      window.localStorage.setItem(COAT_STORAGE_KEY, preset.id);
+    } catch {
+      // Ignore storage failures
+    }
+  }
+
+  private toggleAudioMute(): void {
+    const muted = this.audio.toggleMuted();
+    this.hud.setAudioMuted(muted);
+    this.hud.showMicroToast(muted ? '🔇 AUDIO MUTED' : '🔊 AUDIO ON');
+  }
+
   private beginGame(): void {
     if (this.started) return;
     this.started = true;
+    this.goatCam.startOrbit = false;
     trackEvent('game/start', 'Game Start');
     this.startOverlayEl.classList.add('hidden');
     this.audio.unlock();
     this.audio.playBleat();
-    this.resetRun();
+    // Preserve smoothed camera position so dropping in swoops cinematically from the start orbit!
+    this.resetRun(true);
+    this.rig.setFirstPersonMode(this.goatCam.mode === 'gopro');
     this.checkpoints.startRun();
     this.updateTouchControlsVisibility();
     this.hud.showBanner('DROP IN!', 'THREAD THE RAZOR LEDGE', 1300);
@@ -206,6 +248,10 @@ class ApexGoatGame {
     const resumeBtn = document.getElementById('resume-btn')!;
     const pauseRestartBtn = document.getElementById('pause-restart-btn')!;
     const pauseCamBtn = document.getElementById('pause-cam-btn')!;
+    const pauseAudioBtn = document.getElementById('pause-audio-btn');
+    const muteIndicatorBtn = document.getElementById('mute-indicator');
+    const helpToggleChip = document.getElementById('help-toggle-chip');
+    const controlsHintClose = document.getElementById('controls-hint-close');
     const finishRetryBtn = document.getElementById('finish-retry-btn')!;
 
     rotateDismissBtn?.addEventListener('click', () => {
@@ -224,12 +270,64 @@ class ApexGoatGame {
     pauseCamBtn.addEventListener('click', () => {
       const mode = this.goatCam.toggleMode(this.rig);
       this.hud.setCameraMode(mode);
+      this.syncStartCamPills(mode);
       trackEventOnce(`camera/${mode}`, `Camera: ${mode}`);
+    });
+    pauseAudioBtn?.addEventListener('click', () => {
+      this.toggleAudioMute();
+      pauseAudioBtn.blur();
+    });
+    muteIndicatorBtn?.addEventListener('click', () => {
+      this.toggleAudioMute();
+      muteIndicatorBtn.blur();
+    });
+    helpToggleChip?.addEventListener('click', () => {
+      this.hud.setControlsHelpVisible(true);
+      helpToggleChip.blur();
+    });
+    controlsHintClose?.addEventListener('click', () => {
+      this.hud.setControlsHelpVisible(false);
+      controlsHintClose.blur();
     });
     finishRetryBtn.addEventListener('click', () => {
       trackEvent('run/retry', 'Run Retry');
       this.resetRun();
       this.hud.showBanner('RACE YOUR GHOST!', 'GO!', 850);
+    });
+
+    // Live Start Modal Selectors (Camera & Goat Coat)
+    const startCamBtns = document.querySelectorAll<HTMLButtonElement>('[data-start-cam]');
+    this.syncStartCamPills = (mode: CameraMode) => {
+      startCamBtns.forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.startCam === mode);
+      });
+    };
+    this.syncStartCamPills(this.goatCam.mode);
+    startCamBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const nextMode: CameraMode = btn.dataset.startCam === 'gopro' ? 'gopro' : 'chase';
+        const mode = this.goatCam.setMode(nextMode, this.rig);
+        this.hud.setCameraMode(mode);
+        this.syncStartCamPills(mode);
+        trackEventOnce(`camera/${mode}`, `Camera: ${mode}`);
+        btn.blur();
+      });
+    });
+
+    const startCoatBtns = document.querySelectorAll<HTMLButtonElement>('[data-start-coat]');
+    const syncCoatPills = (coatId: GoatCoatId) => {
+      startCoatBtns.forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.startCoat === coatId);
+      });
+    };
+    syncCoatPills(this.currentCoatId);
+    startCoatBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const coatId = btn.dataset.startCoat as GoatCoatId;
+        this.applyCoat(coatId);
+        syncCoatPills(this.currentCoatId);
+        btn.blur();
+      });
     });
 
     // Segmented Pause Tabs (Tricks | Controls) — clickable OR toggleable with LB on controller!
@@ -353,7 +451,7 @@ class ApexGoatGame {
     this.updateTouchControlsVisibility();
   }
 
-  private resetRun(): void {
+  private resetRun(preserveCameraBlend = false): void {
     this.setPaused(false);
     this.finishOverlayEl.classList.add('hidden');
     this.maxRunSpeedKmh = 0;
@@ -365,7 +463,8 @@ class ApexGoatGame {
     this.recorder.reset();
     this.herd.reset();
     this.combo.reset();
-    this.goatCam.reset();
+    this.goatCam.startOrbit = !this.started;
+    this.goatCam.reset(preserveCameraBlend);
     this.hud.clearSplitDelta();
     this.updateTouchControlsVisibility();
   }
@@ -382,6 +481,7 @@ class ApexGoatGame {
   }
 
   private resetToCheckpoint(): void {
+    this.hud.hideWipeout();
     // After finishing the run, never respawn into the finish gate in a fall loop —
     // place the goat safely in the flat Valley Finish Meadow!
     if (this.checkpoints.runFinished) {
@@ -421,6 +521,19 @@ class ApexGoatGame {
     const input = this.input.poll();
     this.hud.setInputDevice(input.device, input.gamepadConnected, input.gamepadLayout);
 
+    // Quick mute hotkey (U) works everywhere — Start, Gameplay, Pause, and Finish
+    if (input.muteToggleJustPressed) {
+      this.toggleAudioMute();
+    }
+
+    // Allow camera preview toggle (C) even on the Start overlay
+    if (!this.started && input.cameraToggleJustPressed) {
+      const mode = this.goatCam.toggleMode(this.rig);
+      this.hud.setCameraMode(mode);
+      this.syncStartCamPills(mode);
+      trackEventOnce(`camera/${mode}`, `Camera: ${mode}`);
+    }
+
     // Allow Gamepad A/Cross or Start to drop straight in from the Start overlay!
     if (!this.started && (input.jumpJustPressed || input.pauseJustPressed)) {
       this.beginGame();
@@ -439,7 +552,11 @@ class ApexGoatGame {
       if (input.cameraToggleJustPressed) {
         const mode = this.goatCam.toggleMode(this.rig);
         this.hud.setCameraMode(mode);
+        this.syncStartCamPills(mode);
         trackEventOnce(`camera/${mode}`, `Camera: ${mode}`);
+      }
+      if (input.helpToggleJustPressed && !this.paused && !this.checkpoints.runFinished) {
+        this.hud.toggleControlsHelp();
       }
       if (input.restartJustPressed) {
         const isRetry = this.checkpoints.runFinished;
@@ -556,10 +673,9 @@ class ApexGoatGame {
               if (this.combo.bust()) {
                 this.audio.playComboBust();
               }
-              this.hud.showBanner(
-                ev.trickBail ? 'TRICK BAIL!' : 'WIPEOUT!',
-                ev.trickBail ? 'UNDER-ROTATED LANDING' : 'RESPAWNING...',
-                900,
+              this.hud.showWipeout(
+                ev.trickBail ? 'TRICK BAIL' : 'WIPEOUT',
+                ev.trickBail ? 'Under-rotated landing' : 'Hard impact',
               );
             } else if (ev.trickLabel) {
               this.audio.playTrickStomp(ev.trickCount);
@@ -589,7 +705,7 @@ class ApexGoatGame {
             if (this.combo.bust()) {
               this.audio.playComboBust();
             }
-            this.hud.showBanner('OFF CLIFF', 'SNAPPING BACK TO TRACK', 650);
+            this.hud.showWipeout('OFF CLIFF', 'Snapping back to track');
           },
         });
 
@@ -686,6 +802,7 @@ class ApexGoatGame {
       // Snappy recovery: 0.55s on cliff fall, 0.85s on landing bailout (Space/R skips instantly!)
       if (this.controller.bailedOut) {
         const limit = this.controller.outOfBounds ? 0.55 : 0.85;
+        this.hud.updateWipeoutProgress(1 - this.controller.bailTimer / limit);
         if (this.controller.bailTimer > limit || input.jumpJustPressed) {
           this.resetToCheckpoint();
         }

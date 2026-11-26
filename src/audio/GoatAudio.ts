@@ -8,6 +8,9 @@ import { GoatPhysicsSnapshot, SurfaceType } from '../types';
  * - Slope-pump boost whoosh, checkpoint chime, and cheeky goat bleat!
  */
 export class GoatAudio {
+  private static readonly MUTE_STORAGE_KEY = 'apex-goat-audio-muted-v1';
+  private static readonly BASE_GAIN = 0.62;
+
   private ctx: AudioContext | null = null;
   private noiseBuffer: AudioBuffer | null = null;
   private windGain: GainNode | null = null;
@@ -16,9 +19,17 @@ export class GoatAudio {
   private slideFilter: BiquadFilterNode | null = null;
   private masterGain: GainNode | null = null;
   private initialized = false;
+  private muted = false;
+  private paused = false;
   private windDuckUntil = 0;
 
   constructor() {
+    try {
+      this.muted = window.localStorage.getItem(GoatAudio.MUTE_STORAGE_KEY) === '1';
+    } catch {
+      this.muted = false;
+    }
+
     // Ensure any tap, click, or keypress unlocks/resumes Web Audio (including iOS 'interrupted' state)
     const resumeOnGesture = () => {
       if (this.ctx && this.ctx.state !== 'running') {
@@ -45,7 +56,7 @@ export class GoatAudio {
 
     this.ctx = new AudioCtx();
     this.masterGain = this.ctx.createGain();
-    this.masterGain.gain.value = 0.62;
+    this.masterGain.gain.value = this.muted || this.paused ? 0.0 : GoatAudio.BASE_GAIN;
     this.masterGain.connect(this.ctx.destination);
 
     // Pre-generate 2 seconds of white noise for wind, scree, and clacks
@@ -95,10 +106,35 @@ export class GoatAudio {
     this.initialized = true;
   }
 
-  public setPaused(paused: boolean): void {
+  private updateMasterGain(): void {
     if (!this.initialized || !this.ctx || !this.masterGain) return;
     const now = this.ctx.currentTime;
-    this.masterGain.gain.setTargetAtTime(paused ? 0.0 : 0.62, now, 0.03);
+    const target = this.muted || this.paused ? 0.0 : GoatAudio.BASE_GAIN;
+    this.masterGain.gain.setTargetAtTime(target, now, 0.03);
+  }
+
+  public isMuted(): boolean {
+    return this.muted;
+  }
+
+  public setMuted(muted: boolean): void {
+    this.muted = muted;
+    try {
+      window.localStorage.setItem(GoatAudio.MUTE_STORAGE_KEY, muted ? '1' : '0');
+    } catch {
+      // Ignore storage failures in restricted browsing modes
+    }
+    this.updateMasterGain();
+  }
+
+  public toggleMuted(): boolean {
+    this.setMuted(!this.muted);
+    return this.muted;
+  }
+
+  public setPaused(paused: boolean): void {
+    this.paused = paused;
+    this.updateMasterGain();
   }
 
   public updateContinuous(snap: GoatPhysicsSnapshot): void {

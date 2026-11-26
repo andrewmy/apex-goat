@@ -27,6 +27,8 @@ export class GoatCamera {
   private initialized = false;
   private victoryOrbitAngle = 0;
   public victoryOrbit = false;
+  private startOrbitTime = 0;
+  public startOrbit = false;
 
   private readonly _mountPos = new THREE.Vector3();
   private readonly _lookTarget = new THREE.Vector3();
@@ -44,9 +46,15 @@ export class GoatCamera {
   }
 
   public toggleMode(rig: GoatRig): CameraMode {
-    this.mode = this.mode === 'chase' ? 'gopro' : 'chase';
-    rig.setFirstPersonMode(this.mode === 'gopro');
-    this.initialized = false;
+    return this.setMode(this.mode === 'chase' ? 'gopro' : 'chase', rig);
+  }
+
+  public setMode(mode: CameraMode, rig: GoatRig): CameraMode {
+    this.mode = mode;
+    rig.setFirstPersonMode(this.mode === 'gopro' && !this.startOrbit && !this.victoryOrbit);
+    if (!this.startOrbit) {
+      this.initialized = false;
+    }
     return this.mode;
   }
 
@@ -54,8 +62,10 @@ export class GoatCamera {
     this.shakeIntensity = Math.min(1.0, this.shakeIntensity + amount);
   }
 
-  public reset(): void {
-    this.initialized = false;
+  public reset(preserveSmooth = false): void {
+    if (!preserveSmooth) {
+      this.initialized = false;
+    }
     this.shakeIntensity = 0;
     this.victoryOrbit = false;
     this.victoryOrbitAngle = 0;
@@ -67,6 +77,77 @@ export class GoatCamera {
   }
 
   public update(dt: number, snap: GoatPhysicsSnapshot, rig: GoatRig, course?: AlpineCourse): void {
+    if (this.startOrbit) {
+      rig.setFirstPersonMode(false);
+      this.startOrbitTime += dt;
+      // Gentle open-valley arc (+X side of The Goat Spire) framing the goat in 3/4 profile
+      // against the sheer cliff drop, waiting herd, and distant alpine peaks!
+      const isPortrait = this.camera.aspect < 1;
+      const sway = Math.sin(this.startOrbitTime * 0.28);
+      const radius = isPortrait ? 5.9 : 4.8;
+      const azimuth = 0.72 + sway * 0.42; // Open valley side (approx +18°..+66° right of rear)
+
+      this._velDir.copy(snap.forward).setY(0);
+      if (this._velDir.lengthSq() < 0.001) {
+        this._velDir.set(0, 0, -1);
+      } else {
+        this._velDir.normalize();
+      }
+      this._right.crossVectors(this._velDir, WORLD_UP).normalize();
+
+      const backDist = Math.cos(azimuth) * radius;
+      const sideDist = Math.sin(azimuth) * radius;
+      const heightOff =
+        1.95 + Math.cos(this.startOrbitTime * 0.22) * 0.28 + (isPortrait ? 0.35 : 0);
+
+      this._desiredPos
+        .copy(snap.position)
+        .addScaledVector(this._velDir, -backDist)
+        .addScaledVector(this._right, sideDist)
+        .addScaledVector(WORLD_UP, heightOff);
+
+      if (course) {
+        this._anchor.copy(snap.position).addScaledVector(WORLD_UP, 0.95);
+        this._camToDesired.subVectors(this._desiredPos, this._anchor);
+        const targetDist = this._camToDesired.length();
+        if (targetDist > 0.1) {
+          this._camToDesired.divideScalar(targetDist);
+          this._ray.set(this._anchor, this._camToDesired);
+          const hit = course.bvh.raycastFirst(this._ray, THREE.DoubleSide);
+          if (hit && hit.distance < targetDist + 0.85) {
+            const safeDist = Math.max(1.8, hit.distance - 0.85);
+            this._desiredPos.copy(this._anchor).addScaledVector(this._camToDesired, safeDist);
+          }
+        }
+      }
+
+      // Look slightly ahead & down-valley past the goat so the cliff drop shines behind the card
+      this._lookTarget
+        .copy(snap.position)
+        .addScaledVector(this._velDir, 3.6)
+        .addScaledVector(this._right, -0.35)
+        .addScaledVector(WORLD_UP, 0.35);
+
+      const targetFov = isPortrait ? 78 : 66;
+      if (!this.initialized) {
+        this.smoothedPos.copy(this._desiredPos);
+        this.smoothedLook.copy(this._lookTarget);
+        this.smoothedUp.copy(WORLD_UP);
+        this.camera.fov = targetFov;
+        this.initialized = true;
+      } else {
+        this.smoothedPos.lerp(this._desiredPos, Math.min(1, dt * 3.5));
+        this.smoothedLook.lerp(this._lookTarget, Math.min(1, dt * 4.0));
+        this.smoothedUp.lerp(WORLD_UP, Math.min(1, dt * 5.0)).normalize();
+        this.camera.fov += (targetFov - this.camera.fov) * Math.min(1, dt * 3.5);
+      }
+      this.camera.updateProjectionMatrix();
+      this.camera.position.copy(this.smoothedPos);
+      this.camera.up.copy(this.smoothedUp);
+      this.camera.lookAt(this.smoothedLook);
+      return;
+    }
+
     if (this.victoryOrbit) {
       rig.setFirstPersonMode(false);
       this.victoryOrbitAngle += dt * 0.52;
@@ -76,7 +157,7 @@ export class GoatCamera {
         snap.position.y + 2.4,
         snap.position.z + Math.cos(this.victoryOrbitAngle) * radius,
       );
-      this._lookTarget.copy(snap.position).add(new THREE.Vector3(0, 0.5, 0));
+      this._lookTarget.copy(snap.position).addScaledVector(WORLD_UP, 0.5);
       this.smoothedPos.lerp(this._desiredPos, Math.min(1, dt * 4.5));
       this.smoothedLook.lerp(this._lookTarget, Math.min(1, dt * 6));
       this.smoothedUp.lerp(WORLD_UP, Math.min(1, dt * 6)).normalize();

@@ -72,6 +72,7 @@ export class Hud {
   private readonly mSpeedEl = document.getElementById('m-speed-display');
   private readonly mSurfaceEl = document.getElementById('m-surface-display');
   private readonly pausePbEl = document.getElementById('pause-pb');
+  private readonly finishPbEl = document.getElementById('finish-pb');
   private readonly speedArcEl = document.getElementById('speed-arc') as unknown as SVGCircleElement;
   private readonly pumpArcEl = document.getElementById('pump-arc') as unknown as SVGCircleElement;
   private readonly needleEl = document.getElementById('speed-needle') as unknown as SVGGElement;
@@ -80,6 +81,9 @@ export class Hud {
   private readonly speedVigEl = document.getElementById('speed-vignette')!;
   private readonly lensOverlayEl = document.getElementById('lens-overlay')!;
   private readonly controlsHintEl = document.getElementById('controls-hint')!;
+  private readonly controlsHintBodyEl = document.getElementById('controls-hint-body')!;
+  private readonly helpToggleChipEl = document.getElementById('help-toggle-chip');
+  private readonly muteIndicatorEl = document.getElementById('mute-indicator');
   private readonly gpStatusEl = document.getElementById('gp-status');
   private readonly startTipsEl = document.getElementById('start-tips');
   private readonly pauseTricksEl = document.getElementById('pause-tricks-list');
@@ -87,6 +91,7 @@ export class Hud {
   private readonly resumeBtnEl = document.getElementById('resume-btn');
   private readonly pauseRestartBtnEl = document.getElementById('pause-restart-btn');
   private readonly pauseCamBtnEl = document.getElementById('pause-cam-btn');
+  private readonly pauseAudioBtnEl = document.getElementById('pause-audio-btn');
   private readonly finishRetryBtnEl = document.getElementById('finish-retry-btn');
   private readonly bindPadHeadEl = document.getElementById('bind-pad-head');
   private readonly bindPadDriveEl = document.getElementById('bind-pad-drive');
@@ -112,6 +117,17 @@ export class Hud {
   private readonly bannerTitleEl = document.getElementById('banner-title')!;
   private readonly bannerSubEl = document.getElementById('banner-sub')!;
   private bannerTimeout: number | null = null;
+
+  private readonly wipeoutToastEl = document.getElementById('wipeout-toast')!;
+  private readonly wipeoutTitleEl = document.getElementById('wipeout-title')!;
+  private readonly wipeoutSubEl = document.getElementById('wipeout-sub')!;
+  private readonly wipeoutBarFillEl = document.getElementById('wipeout-bar-fill')!;
+
+  private readonly microToastEl = document.getElementById('micro-toast')!;
+  private microToastTimeout: number | null = null;
+
+  private audioMuted = false;
+  private controlsHelpVisible = false;
 
   private lastSpeedText = '';
   private lastSlopeText = '';
@@ -184,6 +200,75 @@ export class Hud {
     if (this.pausePbEl) {
       this.pausePbEl.textContent = formatted;
     }
+    if (this.finishPbEl) {
+      this.finishPbEl.textContent = formatted;
+    }
+  }
+
+  public setAudioMuted(muted: boolean): void {
+    this.audioMuted = muted;
+    if (this.muteIndicatorEl) {
+      this.muteIndicatorEl.classList.toggle('hidden', !muted);
+    }
+    this.renderPauseAudioButton();
+  }
+
+  private renderPauseAudioButton(): void {
+    if (!this.pauseAudioBtnEl) return;
+    const isKeyboard = this.activeDevice === null || this.activeDevice === 'keyboard';
+    const keySuffix = isKeyboard ? ' (U)' : '';
+    this.pauseAudioBtnEl.textContent = this.audioMuted
+      ? `🔇 Audio: Off${keySuffix}`
+      : `🔊 Audio: On${keySuffix}`;
+    this.pauseAudioBtnEl.classList.toggle('muted', this.audioMuted);
+  }
+
+  public setControlsHelpVisible(visible: boolean): void {
+    this.controlsHelpVisible = visible;
+    this.controlsHintEl.classList.toggle('visible', visible);
+    if (this.helpToggleChipEl) {
+      this.helpToggleChipEl.classList.toggle('hidden', visible);
+    }
+  }
+
+  public toggleControlsHelp(): boolean {
+    this.setControlsHelpVisible(!this.controlsHelpVisible);
+    return this.controlsHelpVisible;
+  }
+
+  public showMicroToast(message: string, durationMs = 1350): void {
+    this.microToastEl.textContent = message;
+    this.microToastEl.classList.add('visible');
+    if (this.microToastTimeout !== null) {
+      window.clearTimeout(this.microToastTimeout);
+    }
+    this.microToastTimeout = window.setTimeout(() => {
+      this.microToastEl.classList.remove('visible');
+    }, durationMs);
+  }
+
+  public showWipeout(title: string, reason: string): void {
+    const isTouch = this.activeDevice === 'touch';
+    const isPad = this.activeDevice === 'gamepad';
+    const g = PAD_GLYPHS[this.activeLayout];
+    const skipHint = isTouch
+      ? 'Tap LEAP to skip'
+      : isPad
+        ? `${g.jump} / ${g.restart} to recover`
+        : 'SPACE / R to recover';
+    this.wipeoutTitleEl.textContent = title;
+    this.wipeoutSubEl.textContent = `${reason} · ${skipHint}`;
+    this.wipeoutBarFillEl.style.width = '100%';
+    this.wipeoutToastEl.classList.add('visible');
+  }
+
+  public updateWipeoutProgress(remainingFrac: number): void {
+    const clamped = Math.max(0, Math.min(1, remainingFrac));
+    this.wipeoutBarFillEl.style.width = `${Math.round(clamped * 100)}%`;
+  }
+
+  public hideWipeout(): void {
+    this.wipeoutToastEl.classList.remove('visible');
   }
 
   public setCameraMode(mode: CameraMode): void {
@@ -241,6 +326,7 @@ export class Hud {
   public clearSplitDelta(): void {
     this.deltaEl.textContent = '';
     this.bannerEl.classList.remove('visible');
+    this.hideWipeout();
   }
 
   public setInputDevice(
@@ -276,9 +362,9 @@ export class Hud {
     if (device === 'touch') {
       if (this.startTipsEl) {
         this.startTipsEl.innerHTML = `
-          <div><strong>Auto-Sprint &amp; Floating Stick:</strong> Drag left/right anywhere in the bottom-left zone to carve. Pull down on ground to brake, or drag up/down mid-air for <strong>Frontflips &amp; Backflips</strong>.</div>
-          <div><strong>Slope-Pump &amp; 360° Spins:</strong> Hold <strong>PUMP</strong> on steep faces (&ge;15&deg;) or while diving onto rollers for a massive speed surge—slide left/right on <strong>PUMP</strong> mid-air for 360&deg; Spins!</div>
-          <div><strong>Leap, Ram &amp; Bleat:</strong> Tap <strong>LEAP</strong> off steep walls to Wall-Kick, <strong>RAM</strong> to blast rival goats (+18 km/h), and <strong>BLEAT</strong> mid-air for an echoing canyon boost.</div>
+          <div><strong>Floating Stick:</strong> Drag left/right to carve; drag up/down mid-air for <strong>Flips</strong>.</div>
+          <div><strong>Slope-Pump &amp; Spins:</strong> Hold <strong>PUMP</strong> on steep drops; slide left/right on <strong>PUMP</strong> mid-air to spin.</div>
+          <div><strong>Leap, Ram &amp; Bleat:</strong> Tap <strong>LEAP</strong> to Wall-Kick, <strong>RAM</strong> herd goats (+18 km/h), and <strong>BLEAT</strong> mid-air.</div>
         `;
       }
       if (this.pauseTricksEl) {
@@ -292,19 +378,19 @@ export class Hud {
       if (this.startBtnEl) this.startBtnEl.textContent = 'Drop In';
       if (this.resumeBtnEl) this.resumeBtnEl.textContent = 'Resume';
       if (this.pauseRestartBtnEl) this.pauseRestartBtnEl.textContent = 'Restart Run';
-      if (this.pauseCamBtnEl) this.pauseCamBtnEl.textContent = 'Toggle Camera';
+      if (this.pauseCamBtnEl) this.pauseCamBtnEl.textContent = 'Camera';
       if (this.finishRetryBtnEl) this.finishRetryBtnEl.textContent = 'Race Your Ghost';
     } else if (device === 'gamepad') {
-      this.controlsHintEl.innerHTML = `
+      this.controlsHintBodyEl.innerHTML = `
         <div><kbd>${g.accel}</kbd>/<kbd>${g.brake}</kbd> Sprint &amp; Brake · <kbd>L-STICK</kbd> Carve · <kbd>${g.jump}</kbd> Leap</div>
-        <div><kbd>${g.pump}</kbd>/<kbd>${g.back}</kbd> Pump / Dive · <kbd>${g.ram}</kbd> Headbutt Ram · <kbd>↑</kbd> Bleat</div>
-        <div><kbd>${g.restart}</kbd> Restart · <kbd>${g.cp}</kbd> Checkpoint · <kbd>${g.cam}</kbd> Cam · <kbd>${g.pause}</kbd> Pause</div>
+        <div><kbd>${g.pump}</kbd>/<kbd>${g.back}</kbd> Pump / Dive · <kbd>${g.ram}</kbd> Ram · <kbd>↑</kbd> Bleat</div>
+        <div><kbd>${g.restart}</kbd> Restart · <kbd>${g.cp}</kbd> CP · <kbd>${g.cam}</kbd> Cam · <kbd>${g.pause}</kbd> Pause</div>
       `;
       if (this.startTipsEl) {
         this.startTipsEl.innerHTML = `
-          <div><strong>Slope-Pumping (${g.pump} / ${g.back}):</strong> Hold <strong>${g.pump}</strong> or <strong>${g.back}</strong> in mid-air to fast-dive onto steep roller backsides—landing crouched converts drop into a massive speed surge!</div>
-          <div><strong>Headbutt Ram (${g.ram}) &amp; Wall-Kicks (${g.jump}):</strong> Charge into rival herd goats with <strong>${g.ram}</strong> to launch them flying for a speed boost, or tap <strong>${g.jump}</strong> off steep cliffs to Wall-Kick.</div>
-          <div><strong>Cameras &amp; Instant Loop:</strong> Starts in Chase Cam; press <strong>${g.cam}</strong> for GoPro Action POV, <strong>${g.restart}</strong> for instant restart, or <strong>${g.cp}</strong> for last checkpoint.</div>
+          <div><strong>Slope-Pump (${g.pump} / ${g.back}):</strong> Fast-dive onto steep backsides to convert drop into a massive speed surge.</div>
+          <div><strong>Ram (${g.ram}) &amp; Wall-Kick (${g.jump}):</strong> Blast herd goats (+18 km/h) or kick off steep cliffs.</div>
+          <div><strong>Quick Controls:</strong> <strong>${g.cam}</strong> Cam · <strong>${g.restart}</strong> Restart · <strong>${g.cp}</strong> Checkpoint · <strong>${g.pause}</strong> Pause.</div>
         `;
       }
       if (this.pauseTricksEl) {
@@ -318,21 +404,21 @@ export class Hud {
       if (this.startBtnEl) this.startBtnEl.textContent = `Drop In (Press ${g.jump} / ${g.pause})`;
       if (this.resumeBtnEl) this.resumeBtnEl.textContent = `Resume (${g.pause} / ${g.back})`;
       if (this.pauseRestartBtnEl) this.pauseRestartBtnEl.textContent = `Restart Run (${g.restart})`;
-      if (this.pauseCamBtnEl) this.pauseCamBtnEl.textContent = `Toggle Camera (${g.cam})`;
+      if (this.pauseCamBtnEl) this.pauseCamBtnEl.textContent = `Camera (${g.cam})`;
       if (this.finishRetryBtnEl) {
         this.finishRetryBtnEl.textContent = `Race Your Ghost (${g.jump} / ${g.restart})`;
       }
     } else {
-      this.controlsHintEl.innerHTML = `
+      this.controlsHintBodyEl.innerHTML = `
         <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Sprint &amp; Carve · <kbd>SPACE</kbd> Leap</div>
-        <div><kbd>SHIFT</kbd> Pump / Dive · <kbd>F</kbd> Headbutt Ram · <kbd>B</kbd> Bleat</div>
-        <div><kbd>R</kbd> Restart · <kbd>BKSP</kbd> Checkpoint · <kbd>C</kbd> Camera · <kbd>ESC</kbd>/<kbd>P</kbd> Pause</div>
+        <div><kbd>SHIFT</kbd> Pump / Dive · <kbd>F</kbd> Ram · <kbd>B</kbd> Bleat</div>
+        <div><kbd>R</kbd> Restart · <kbd>BKSP</kbd> CP · <kbd>C</kbd> Cam · <kbd>U</kbd> Audio · <kbd>ESC</kbd> Pause</div>
       `;
       if (this.startTipsEl) {
         this.startTipsEl.innerHTML = `
-          <div><strong>Slope-Pumping (SHIFT):</strong> Hold <strong>SHIFT</strong> in mid-air to fast-dive onto steep roller backsides—landing crouched converts drop into a massive speed surge!</div>
-          <div><strong>Headbutt Ram (F) &amp; Wall-Kicks (SPACE):</strong> Ram rival herd goats with <strong>F</strong> to send them flying for a speed boost, or tap <strong>SPACE</strong> off steep cliffs to Wall-Kick.</div>
-          <div><strong>Cameras &amp; Instant Loop:</strong> Starts in Chase Cam; press <strong>C</strong> for GoPro Action POV, <strong>R</strong> for instant restart, or <strong>BKSP</strong> for last checkpoint.</div>
+          <div><strong>Slope-Pump (SHIFT):</strong> Dive onto steep backsides to convert drop into a massive speed surge.</div>
+          <div><strong>Ram (F) &amp; Wall-Kick (SPACE):</strong> Blast herd goats (+18 km/h) or kick off steep walls.</div>
+          <div><strong>Quick Keys:</strong> <strong>C</strong> Cam · <strong>R</strong> Restart · <strong>U</strong> Audio · <strong>H</strong> Controls.</div>
         `;
       }
       if (this.pauseTricksEl) {
@@ -346,9 +432,10 @@ export class Hud {
       if (this.startBtnEl) this.startBtnEl.textContent = 'Drop In (Click or Press Space)';
       if (this.resumeBtnEl) this.resumeBtnEl.textContent = 'Resume (ESC / P)';
       if (this.pauseRestartBtnEl) this.pauseRestartBtnEl.textContent = 'Restart Run (R)';
-      if (this.pauseCamBtnEl) this.pauseCamBtnEl.textContent = 'Toggle Camera (C)';
+      if (this.pauseCamBtnEl) this.pauseCamBtnEl.textContent = 'Camera (C)';
       if (this.finishRetryBtnEl) this.finishRetryBtnEl.textContent = 'Race Your Ghost (R / Space)';
     }
+    this.renderPauseAudioButton();
   }
 
   public update(
