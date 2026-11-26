@@ -15,7 +15,8 @@ import { GhostHerd } from './ghosts/GhostHerd';
 import { Hud, formatTime } from './ui/Hud';
 import { BuildBadge } from './ui/BuildBadge';
 import { ComboTracker } from './scoring/ComboTracker';
-import { GoatPhysicsSnapshot, SurfaceType } from './types';
+import { trackEvent, trackEventOnce } from './analytics';
+import { GoatPhysicsSnapshot, InputDevice, SurfaceType } from './types';
 
 function createEmptySnapshot(): GoatPhysicsSnapshot {
   return {
@@ -84,6 +85,7 @@ class ApexGoatGame {
   private rotateOverlayEl!: HTMLElement;
   private togglePauseTab!: () => void;
   private maxRunSpeedKmh = 0;
+  private lastTrackedInputDevice: InputDevice | null = null;
   private accumulator = 0;
   private lastFrameTime = performance.now();
   private fpsFrameCount = 0;
@@ -184,6 +186,7 @@ class ApexGoatGame {
   private beginGame(): void {
     if (this.started) return;
     this.started = true;
+    trackEvent('game/start', 'Game Start');
     this.startOverlayEl.classList.add('hidden');
     this.audio.unlock();
     this.audio.playBleat();
@@ -213,6 +216,7 @@ class ApexGoatGame {
     startBtn.addEventListener('click', () => this.beginGame());
     resumeBtn.addEventListener('click', () => this.setPaused(false));
     pauseRestartBtn.addEventListener('click', () => {
+      trackEvent('run/restart', 'Run Restart');
       this.setPaused(false);
       this.resetRun();
       this.hud.showBanner('RESTART', 'GO!', 650);
@@ -220,8 +224,10 @@ class ApexGoatGame {
     pauseCamBtn.addEventListener('click', () => {
       const mode = this.goatCam.toggleMode(this.rig);
       this.hud.setCameraMode(mode);
+      trackEventOnce(`camera/${mode}`, `Camera: ${mode}`);
     });
     finishRetryBtn.addEventListener('click', () => {
+      trackEvent('run/retry', 'Run Retry');
       this.resetRun();
       this.hud.showBanner('RACE YOUR GHOST!', 'GO!', 850);
     });
@@ -421,6 +427,10 @@ class ApexGoatGame {
     }
 
     if (this.started) {
+      if (input.device !== this.lastTrackedInputDevice) {
+        this.lastTrackedInputDevice = input.device;
+        trackEventOnce(`input/${input.device}`, `Input: ${input.device}`);
+      }
       if (input.pauseJustPressed) {
         this.setPaused(!this.paused);
       } else if (this.paused && input.backJustPressed) {
@@ -429,14 +439,18 @@ class ApexGoatGame {
       if (input.cameraToggleJustPressed) {
         const mode = this.goatCam.toggleMode(this.rig);
         this.hud.setCameraMode(mode);
+        trackEventOnce(`camera/${mode}`, `Camera: ${mode}`);
       }
       if (input.restartJustPressed) {
+        const isRetry = this.checkpoints.runFinished;
+        trackEvent(isRetry ? 'run/retry' : 'run/restart', isRetry ? 'Run Retry' : 'Run Restart');
         this.resetRun();
         this.hud.showBanner('RESTART', 'GO!', 650);
       }
 
       // On the finish screen, Space or Enter also triggers an instant Trackmania restart!
       if (this.checkpoints.runFinished && input.jumpJustPressed) {
+        trackEvent('run/retry', 'Run Retry');
         this.resetRun();
         this.hud.showBanner('RACE YOUR GHOST!', 'GO!', 800);
       }
@@ -640,12 +654,18 @@ class ApexGoatGame {
               this.hud.setPersonalBest(split.splitTime);
             }
             const { totalScore, isNewBestStyle } = this.combo.finalizeRun();
+            const medal = split.medal ?? 'NONE';
+            trackEvent('run/finish', 'Run Finished');
+            trackEvent(`run/medal/${medal.toLowerCase()}`, `Medal: ${medal}`);
+            if (isNewPb) {
+              trackEvent('run/new-pb', 'New Personal Best');
+            }
             // Proper Finish State: smooth goat deceleration + scenic Victory Orbit + Results Card!
             this.controller.enterFinishState();
             this.goatCam.victoryOrbit = true;
             this.showFinishCard(
               split.splitTime,
-              split.medal ?? 'NONE',
+              medal,
               isNewPb,
               split.deltaVsPb,
               totalScore,

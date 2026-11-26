@@ -55,17 +55,52 @@ function buildTrackerPlugin(): Plugin {
   };
 }
 
+function normalizeGoatCounterEndpoint(raw?: string): string | null {
+  const trimmed = raw?.trim();
+  if (!trimmed) return null;
+  const withoutTrailingSlash = trimmed.replace(/\/+$/, '');
+  return withoutTrailingSlash.endsWith('/count')
+    ? withoutTrailingSlash
+    : `${withoutTrailingSlash}/count`;
+}
+
+function goatCounterPlugin(endpoint: string | null): Plugin {
+  return {
+    name: 'goat-counter-analytics',
+    transformIndexHtml() {
+      if (!endpoint) return [];
+      return [
+        {
+          tag: 'script',
+          attrs: {
+            async: true,
+            src: 'https://gc.zgo.at/count.js',
+            'data-goatcounter': endpoint,
+            'data-goatcounter-settings': JSON.stringify({ no_events: true }),
+          },
+          injectTo: 'head',
+        },
+      ];
+    },
+  };
+}
+
 function normalizeBase(base?: string): string {
   if (!base) return './';
   const trimmed = base.replace(/^\/+|\/+$/g, '');
   return trimmed ? `/${trimmed}/` : '/';
 }
 
-export default defineConfig(({ command }) => ({
-  base: command === 'serve' ? '/' : normalizeBase(process.env.VITE_BASE),
-  plugins: [buildTrackerPlugin()],
-  server: {
-    port: 5173,
-    strictPort: true,
-  },
-}));
+export default defineConfig(({ command }) => {
+  const goatCounterEndpoint =
+    command === 'build' ? normalizeGoatCounterEndpoint(process.env.VITE_GOATCOUNTER_URL) : null;
+
+  return {
+    base: command === 'serve' ? '/' : normalizeBase(process.env.VITE_BASE),
+    plugins: [buildTrackerPlugin(), goatCounterPlugin(goatCounterEndpoint)],
+    server: {
+      port: 5173,
+      strictPort: true,
+    },
+  };
+});
