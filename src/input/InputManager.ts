@@ -31,6 +31,7 @@ export class InputManager {
   private prevCamToggle = false;
   private prevPause = false;
   private prevBack = false;
+  private prevHazard = false;
   private pendingActions = {
     jumpPressed: false,
     jumpReleased: false,
@@ -44,6 +45,7 @@ export class InputManager {
     helpToggle: false,
     sceneCycle: false,
     mapToggle: false,
+    hazardTrigger: false,
   };
 
   private onKeyDownBound: (e: KeyboardEvent) => void;
@@ -97,6 +99,7 @@ export class InputManager {
       if (code === 'KeyH') this.pendingActions.helpToggle = true;
       if (code === 'KeyT') this.pendingActions.sceneCycle = true;
       if (code === 'KeyM') this.pendingActions.mapToggle = true;
+      if (code === 'KeyG') this.pendingActions.hazardTrigger = true;
     }
     this.keys.add(code);
   }
@@ -157,6 +160,7 @@ export class InputManager {
     const helpToggleJustPressed = this.pendingActions.helpToggle;
     const sceneCycleJustPressed = this.pendingActions.sceneCycle;
     const mapToggleJustPressed = this.pendingActions.mapToggle;
+    let hazardTriggerJustPressed = this.pendingActions.hazardTrigger;
 
     // Poll standard HTML5 Gamepad API if connected
     let gamepadConnected = false;
@@ -191,6 +195,7 @@ export class InputManager {
       const gpCam = pad.buttons[8]?.pressed ?? false; // View / Share
       const gpPause = pad.buttons[9]?.pressed ?? false; // Menu / Options
       const gpBleat = (pad.buttons[12]?.pressed || pad.buttons[11]?.pressed) ?? false; // D-Pad Up or R3
+      const gpHazard = pad.buttons[13]?.pressed ?? false; // D-Pad Down -> Trigger Rockslide/Avalanche
 
       // Auto-switch HUD glyphs to controller the moment any stick/trigger/button moves!
       if (
@@ -207,7 +212,8 @@ export class InputManager {
         gpRestart ||
         gpCp ||
         gpCam ||
-        gpPause
+        gpPause ||
+        gpHazard
       ) {
         this.activeDevice = 'gamepad';
       }
@@ -232,6 +238,7 @@ export class InputManager {
       if (gpCam && !this.prevCamToggle) cameraToggleJustPressed = true;
       if (gpPause && !this.prevPause) pauseJustPressed = true;
       if (gpBack && !this.prevBack) backJustPressed = true;
+      if (gpHazard && !this.prevHazard) hazardTriggerJustPressed = true;
 
       this.prevJump = gpJump;
       this.prevHeadbutt = gpHeadbutt;
@@ -241,6 +248,7 @@ export class InputManager {
       this.prevCamToggle = gpCam;
       this.prevPause = gpPause;
       this.prevBack = gpBack;
+      this.prevHazard = gpHazard;
       break;
     }
 
@@ -284,6 +292,7 @@ export class InputManager {
     this.pendingActions.helpToggle = false;
     this.pendingActions.sceneCycle = false;
     this.pendingActions.mapToggle = false;
+    this.pendingActions.hazardTrigger = false;
 
     return {
       device: this.activeDevice,
@@ -308,6 +317,7 @@ export class InputManager {
       helpToggleJustPressed,
       sceneCycleJustPressed,
       mapToggleJustPressed,
+      hazardTriggerJustPressed,
     };
   }
 

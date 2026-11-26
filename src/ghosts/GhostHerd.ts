@@ -196,6 +196,40 @@ export class GhostHerd {
   }
 
   /**
+   * Knocks out and ragdolls any herd goats caught in a triggered rockslide/avalanche wave!
+   * Returns how many goats were sent flying.
+   */
+  public applyHazardWave(center: THREE.Vector3, radius: number, impulseDir: THREE.Vector3): number {
+    const rSq = radius * radius;
+    let knockedCount = 0;
+    for (const mate of this.herd) {
+      if (!mate.initialized || mate.knocked) continue;
+      const dx = mate.smoothedPos.x - center.x;
+      const dy = mate.smoothedPos.y + 0.8 - center.y;
+      const dz = mate.smoothedPos.z - center.z;
+      if (dx * dx + dy * dy + dz * dz > rSq) continue;
+
+      mate.knocked = true;
+      mate.knockTimer = 0;
+      const scatterX = dx === 0 && dz === 0 ? 1 : dx;
+      const scatterZ = dz;
+      const scatterLen = Math.max(0.01, Math.hypot(scatterX, scatterZ));
+      mate.knockVel.set(
+        impulseDir.x * 20 + (scatterX / scatterLen) * 9.5,
+        10.5 + Math.random() * 5.5,
+        impulseDir.z * 20 + (scatterZ / scatterLen) * 9.5,
+      );
+      mate.knockAngVel.set(
+        (Math.random() - 0.5) * 18,
+        (Math.random() - 0.5) * 18,
+        (Math.random() > 0.5 ? 1 : -1) * (10 + Math.random() * 8),
+      );
+      knockedCount++;
+    }
+    return knockedCount;
+  }
+
+  /**
    * Startles nearby herd goats when the player hits Bleat—making them hop in surprise
    * and scatter slightly sideways out of your racing line! Returns number startled.
    */

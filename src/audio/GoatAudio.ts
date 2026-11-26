@@ -597,4 +597,56 @@ export class GoatAudio {
       this.playBleat(1.28 + Math.random() * 0.18);
     }, 35);
   }
+
+  /** Rumbling alpine rockslide / snow-slab avalanche roar with fracture cracks */
+  public playHazardRoar(durationSec = 6.5, isAvalanche = false): void {
+    if (!this.initialized || !this.ctx || !this.noiseBuffer || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    const dur = Math.max(2.0, durationSec);
+
+    // 1. Deep seismic sub-rumble bed
+    const rumbleSrc = this.ctx.createBufferSource();
+    rumbleSrc.buffer = this.noiseBuffer;
+    rumbleSrc.loop = true;
+
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(isAvalanche ? 340 : 210, now);
+    lp.frequency.linearRampToValueAtTime(isAvalanche ? 540 : 340, now + 1.1);
+    lp.frequency.exponentialRampToValueAtTime(95, now + dur);
+    lp.Q.value = 1.6;
+
+    const rGain = this.ctx.createGain();
+    rGain.gain.setValueAtTime(0.001, now);
+    rGain.gain.linearRampToValueAtTime(isAvalanche ? 0.52 : 0.58, now + 0.45);
+    rGain.gain.setValueAtTime(isAvalanche ? 0.44 : 0.48, now + dur * 0.52);
+    rGain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+    rumbleSrc.connect(lp);
+    lp.connect(rGain);
+    rGain.connect(this.masterGain);
+    rumbleSrc.start(now, Math.random() * 0.5, dur + 0.1);
+
+    // 2. Staggered fracture cracks / boulder impacts in the opening second
+    const cracks = isAvalanche ? 3 : 5;
+    for (let i = 0; i < cracks; i++) {
+      const t0 = now + i * (isAvalanche ? 0.14 : 0.1) + Math.random() * 0.05;
+      const crackSrc = this.ctx.createBufferSource();
+      crackSrc.buffer = this.noiseBuffer;
+
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = (isAvalanche ? 1200 : 760) + Math.random() * 520;
+      bp.Q.value = isAvalanche ? 1.2 : 2.4;
+
+      const cGain = this.ctx.createGain();
+      cGain.gain.setValueAtTime(isAvalanche ? 0.24 : 0.34, t0);
+      cGain.gain.exponentialRampToValueAtTime(0.001, t0 + (isAvalanche ? 0.24 : 0.16));
+
+      crackSrc.connect(bp);
+      bp.connect(cGain);
+      cGain.connect(this.masterGain);
+      crackSrc.start(t0, Math.random(), 0.26);
+    }
+  }
 }

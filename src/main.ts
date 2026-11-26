@@ -3,6 +3,7 @@ import { InputManager } from './input/InputManager';
 import { isTouchCapableDevice } from './input/TouchControls';
 import { AlpineEnvironment } from './world/Environment';
 import { AlpineCourse } from './world/AlpineCourse';
+import { AlpineHazard } from './world/AlpineHazard';
 import { CheckpointManager } from './world/Checkpoints';
 import {
   getNextScenePresetId,
@@ -84,6 +85,7 @@ class ApexGoatGame {
   private readonly input: InputManager;
   private readonly env: AlpineEnvironment;
   private readonly course: AlpineCourse;
+  private readonly hazard: AlpineHazard;
   private readonly checkpoints: CheckpointManager;
   private readonly controller: GoatController;
   private readonly rig: GoatRig;
@@ -146,6 +148,7 @@ class ApexGoatGame {
     this.input = new InputManager();
     this.env = new AlpineEnvironment(this.scene, { isMobile: this.isMobileProfile });
     this.course = new AlpineCourse(this.scene);
+    this.hazard = new AlpineHazard(this.scene, this.course, { isMobile: this.isMobileProfile });
     this.checkpoints = new CheckpointManager(this.course.checkpoints);
     this.controller = new GoatController(this.course);
 
@@ -273,6 +276,30 @@ class ApexGoatGame {
     this.hud.showMicroToast(visible ? '🗺 MAP ON' : '🗺 MAP HIDDEN');
   }
 
+  private triggerHazard(): void {
+    if (!this.started || this.paused || this.checkpoints.runFinished || this.controller.bailedOut) {
+      return;
+    }
+    if (!this.hazard.canTrigger()) {
+      if (!this.hazard.isActive()) {
+        const rem = Math.ceil(this.hazard.getCooldownRemaining());
+        this.hud.showMicroToast(`⛰ HAZARD RECHARGING (${rem}S)`, 950);
+      }
+      return;
+    }
+
+    const nearest = this.course.findNearestSample(this.snapshot.position);
+    const flavor = this.hazard.trigger(nearest.sample.t, this.snapshot.surface);
+    if (!flavor) return;
+
+    this.audio.unlock();
+    this.audio.playHazardRoar(6.8, flavor === 'avalanche');
+    this.goatCam.addShake(0.36);
+    this.input.rumble(0.72, 0.55, 220);
+    this.onboarding.dismiss('scene');
+    trackEventOnce(`hazard/${flavor}`, `Hazard: ${flavor}`);
+  }
+
   private beginGame(): void {
     if (this.started) return;
     this.started = true;
@@ -303,6 +330,8 @@ class ApexGoatGame {
     const pauseCamBtn = document.getElementById('pause-cam-btn')!;
     const pauseAudioBtn = document.getElementById('pause-audio-btn');
     const scenePillBtn = document.getElementById('scene-pill');
+    const hazardPillBtn = document.getElementById('hazard-pill');
+    const mobileHazardBtn = document.getElementById('mobile-hazard-btn');
     const mapTogglePillBtn = document.getElementById('map-toggle-pill');
     const courseMapCloseBtn = document.getElementById('course-map-close');
     const muteIndicatorBtn = document.getElementById('mute-indicator');
@@ -315,7 +344,10 @@ class ApexGoatGame {
       this.updateOrientationGuard();
     });
 
-    startBtn.addEventListener('click', () => this.beginGame());
+    startBtn.addEventListener('click', () => {
+      startBtn.blur();
+      this.beginGame();
+    });
     resumeBtn.addEventListener('click', () => this.setPaused(false));
     pauseRestartBtn.addEventListener('click', () => {
       trackEvent('run/restart', 'Run Restart');
@@ -340,6 +372,14 @@ class ApexGoatGame {
     scenePillBtn?.addEventListener('click', () => {
       this.cycleScenePreset();
       scenePillBtn.blur();
+    });
+    hazardPillBtn?.addEventListener('click', () => {
+      this.triggerHazard();
+      hazardPillBtn.blur();
+    });
+    mobileHazardBtn?.addEventListener('click', () => {
+      this.triggerHazard();
+      mobileHazardBtn.blur();
     });
     mapTogglePillBtn?.addEventListener('click', () => {
       this.toggleCourseMap();
@@ -553,11 +593,13 @@ class ApexGoatGame {
     }
     this.recorder.reset();
     this.herd.reset();
+    this.hazard.reset();
     this.carveTrails.reset();
     this.combo.reset();
     this.goatCam.startOrbit = !this.started;
     this.goatCam.reset(preserveCameraBlend);
     this.hud.clearSplitDelta();
+    this.hud.updateHazardStatus(false, 'rockslide', 0, 0);
     this.updateTouchControlsVisibility();
   }
 
@@ -658,6 +700,9 @@ class ApexGoatGame {
       if (input.helpToggleJustPressed && !this.paused && !this.checkpoints.runFinished) {
         this.hud.toggleControlsHelp();
         this.onboarding.dismiss('help');
+      }
+      if (input.hazardTriggerJustPressed) {
+        this.triggerHazard();
       }
       if (input.restartJustPressed) {
         const isRetry = this.checkpoints.runFinished;
@@ -942,10 +987,45 @@ class ApexGoatGame {
       this.recorder.personalBest,
       this.particles,
     );
+    let hazardSpeedKmh = 0;
     this.particles.update(frameDt);
     if (this.started) {
       this.carveTrails.update(frameDt, this.snapshot);
       this.onboarding.update(frameDt, this.checkpoints.nextIndex);
+
+      const hazardRes = this.hazard.update(
+        frameDt,
+        this.snapshot.position,
+        this.controller.bailedOut,
+        this.herd,
+        this.particles,
+      );
+      hazardSpeedKmh = hazardRes.speedKmh;
+      if (hazardRes.hitPlayer && !this.checkpoints.runFinished) {
+        this.controller.triggerHazardWipeout(hazardRes.impactDir);
+        this.audio.playHeadbuttHit();
+        this.audio.playBleat();
+        if (this.combo.bust()) {
+          this.audio.playComboBust();
+        }
+        this.goatCam.addShake(0.95);
+        this.input.rumble(1.0, 0.9, 280);
+        this.hud.showWipeout(
+          hazardRes.flavor === 'avalanche' ? 'ENGULFED BY AVALANCHE' : 'CRUSHED BY ROCKSLIDE',
+          hazardRes.flavor === 'avalanche' ? 'Buried in snow slab' : 'Struck by falling boulder',
+        );
+      } else if (hazardRes.slideDodged && !this.checkpoints.runFinished) {
+        const mult = this.scoreTrick('SLIDE DODGE', 350);
+        this.audio.playTrickStomp(2);
+        this.hud.showBanner('SLIDE DODGE!', `+350 STYLE · ×${mult} COMBO`, 1100);
+      }
+      if (hazardRes.herdKnockedCount > 0) {
+        this.audio.playBleat(1.24 + Math.random() * 0.22, 0.85);
+      }
+      if (hazardRes.active && hazardRes.proximity > 0.12) {
+        this.goatCam.addShake(hazardRes.proximity * 0.08);
+        this.input.rumble(hazardRes.proximity * 0.48, hazardRes.proximity * 0.34, 95, true);
+      }
     }
     this.env.updateSunAnchor(this.snapshot.position);
     this.goatCam.update(frameDt, this.snapshot, this.rig, this.course);
@@ -985,6 +1065,16 @@ class ApexGoatGame {
       this.herd.getPbGhostPosition(),
     );
     this.horizonCompass.update(this.goatCam.camera, this.snapshot.position, nextCheckpoint);
+
+    const previewFlavor = this.hazard.isActive()
+      ? this.hazard.getFlavor()
+      : this.hazard.getFlavorForLocation(nearestSample.sample.t, this.snapshot.surface);
+    this.hud.updateHazardStatus(
+      this.hazard.isActive(),
+      previewFlavor,
+      hazardSpeedKmh,
+      this.hazard.getCooldownRemaining(),
+    );
 
     const dropMeters = Math.max(
       0,

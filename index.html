@@ -433,6 +433,148 @@
         align-items: flex-end;
         gap: 5px;
       }
+      .hud-top-right-pills {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .hazard-pill {
+        pointer-events: auto;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 162, 128, 0.34);
+        background: rgba(24, 14, 18, 0.42);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        color: #ffe3d8;
+        font-family: inherit;
+        font-size: 10.5px;
+        font-weight: 800;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        font-variant-numeric: tabular-nums;
+        text-shadow: 0 1px 6px rgba(0, 0, 0, 0.65);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+        transition:
+          background 0.12s ease,
+          border-color 0.12s ease,
+          opacity 0.12s ease,
+          transform 0.1s ease;
+      }
+      .hazard-pill:hover {
+        background: rgba(54, 18, 22, 0.68);
+        border-color: rgba(255, 102, 102, 0.78);
+        transform: translateY(-1px);
+      }
+      .hazard-pill.active {
+        background: rgba(145, 22, 32, 0.72);
+        border-color: rgba(255, 105, 105, 0.92);
+        color: #ffffff;
+        box-shadow: 0 0 18px rgba(255, 76, 76, 0.42);
+      }
+      .hazard-pill.cooldown {
+        opacity: 0.56;
+        cursor: default;
+        transform: none;
+      }
+      /* Crimson Alpine Hazard Warning Banner */
+      .hazard-warning {
+        position: fixed;
+        top: 112px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-6px);
+        min-width: 260px;
+        max-width: min(390px, 88vw);
+        padding: 8px 18px 9px;
+        border-radius: 14px;
+        background: rgba(34, 10, 14, 0.72);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 86, 86, 0.8);
+        box-shadow:
+          0 10px 28px rgba(0, 0, 0, 0.42),
+          0 0 22px rgba(255, 64, 64, 0.26),
+          inset 0 1px 0 rgba(255, 190, 190, 0.22);
+        text-align: center;
+        pointer-events: none;
+        opacity: 0;
+        z-index: 15;
+        transition:
+          opacity 0.16s ease,
+          transform 0.16s ease;
+      }
+      .hazard-warning.visible {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+        animation: hazardWarnPulse 0.95s ease-in-out infinite;
+      }
+      .hazard-warn-title {
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #ff9c9c;
+        text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+      }
+      .hazard-warn-sub {
+        margin-top: 2px;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-variant-numeric: tabular-nums;
+        color: rgba(255, 236, 236, 0.92);
+        text-shadow: 0 1px 6px rgba(0, 0, 0, 0.75);
+      }
+      @keyframes hazardWarnPulse {
+        0%,
+        100% {
+          border-color: rgba(255, 86, 86, 0.72);
+          box-shadow:
+            0 10px 28px rgba(0, 0, 0, 0.42),
+            0 0 18px rgba(255, 64, 64, 0.24);
+        }
+        50% {
+          border-color: rgba(255, 146, 128, 0.98);
+          box-shadow:
+            0 10px 28px rgba(0, 0, 0, 0.42),
+            0 0 28px rgba(255, 76, 76, 0.5);
+        }
+      }
+      .mobile-right-col {
+        display: none;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 6px;
+      }
+      .mobile-hazard-btn {
+        pointer-events: auto;
+        cursor: pointer;
+        border: 1px solid rgba(255, 152, 122, 0.48);
+        border-radius: 999px;
+        background: rgba(30, 14, 18, 0.68);
+        color: #ffe2d6;
+        padding: 4px 9px;
+        font-family: inherit;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        font-variant-numeric: tabular-nums;
+        touch-action: none;
+      }
+      .mobile-hazard-btn.active {
+        background: rgba(155, 24, 34, 0.88);
+        border-color: rgba(255, 120, 120, 0.95);
+        color: #ffffff;
+      }
+      .mobile-hazard-btn.cooldown {
+        opacity: 0.52;
+      }
       .scene-pill {
         pointer-events: auto;
         cursor: pointer;
@@ -1833,8 +1975,18 @@
         #mobile-util-bar {
           display: grid;
         }
+        .mobile-right-col {
+          display: flex;
+        }
         #mobile-speed-pill {
           display: flex;
+        }
+        .hazard-warning {
+          top: 108px;
+          backdrop-filter: none;
+          background: rgba(34, 10, 14, 0.88);
+          padding: 7px 13px 8px;
+          min-width: 210px;
         }
         .timer-block {
           min-width: 132px;
@@ -2071,15 +2223,26 @@
         </div>
 
         <div class="hud-top-right">
-          <button
-            type="button"
-            class="scene-pill"
-            id="scene-pill"
-            aria-label="Cycle scene and weather (T)"
-          >
-            <span id="scene-pill-text">☀ NOON · 13:30</span>
-            <kbd class="pill-kbd">T</kbd>
-          </button>
+          <div class="hud-top-right-pills">
+            <button
+              type="button"
+              class="hazard-pill"
+              id="hazard-pill"
+              aria-label="Trigger alpine rockslide or avalanche (G)"
+            >
+              <span id="hazard-pill-text">⛰ ROCKSLIDE</span>
+              <kbd class="pill-kbd">G</kbd>
+            </button>
+            <button
+              type="button"
+              class="scene-pill"
+              id="scene-pill"
+              aria-label="Cycle scene and weather (T)"
+            >
+              <span id="scene-pill-text">☀ NOON · 13:30</span>
+              <kbd class="pill-kbd">T</kbd>
+            </button>
+          </div>
           <div class="hud-pb-line">
             <span class="pb-tag">PB <span id="m-pb">--:--.--</span></span>
             <span class="meta-dot">·</span>
@@ -2093,11 +2256,26 @@
           </div>
         </div>
 
-        <div id="mobile-speed-pill" aria-label="Speedometer">
-          <div class="m-speed-num" id="m-speed-display">0</div>
-          <div class="m-speed-unit">KM/H</div>
-          <div class="m-speed-surface" id="m-surface-display">GRANITE</div>
+        <div class="mobile-right-col">
+          <div id="mobile-speed-pill" aria-label="Speedometer">
+            <div class="m-speed-num" id="m-speed-display">0</div>
+            <div class="m-speed-unit">KM/H</div>
+            <div class="m-speed-surface" id="m-surface-display">GRANITE</div>
+          </div>
+          <button
+            type="button"
+            class="mobile-hazard-btn"
+            id="mobile-hazard-btn"
+            aria-label="Trigger alpine rockslide or avalanche"
+          >
+            ⛰ SLIDE
+          </button>
         </div>
+      </div>
+
+      <div class="hazard-warning" id="hazard-warning" role="alert" aria-live="assertive">
+        <div class="hazard-warn-title" id="hazard-warn-title">⚠ ROCKSLIDE WARNING</div>
+        <div class="hazard-warn-sub" id="hazard-warn-sub">DODGE LATERALLY OR LEAP!</div>
       </div>
 
       <div class="hud-center-banner" id="center-banner">
@@ -2121,8 +2299,10 @@
           <kbd>M</kbd>
         </button>
         <button type="button" class="pointer-callout callout-scene" data-callout="scene">
-          <span>Scene &amp; Weather</span>
+          <span>Scene</span>
           <kbd>T</kbd>
+          <span>· Rockslide</span>
+          <kbd>G</kbd>
         </button>
         <button type="button" class="pointer-callout callout-help" data-callout="help">
           <span>GoPro POV</span>
@@ -2399,6 +2579,10 @@
             <div class="bind-act">Camera / Bleat / Pause</div>
             <div class="bind-key">C / B / ESC</div>
             <div class="bind-pad" id="bind-pad-misc">VIEW / &uarr; / MENU</div>
+
+            <div class="bind-act">Rockslide / Avalanche</div>
+            <div class="bind-key">G</div>
+            <div class="bind-pad">D-Pad &darr;</div>
 
             <div class="bind-act">Scene / Map / Audio / Help</div>
             <div class="bind-key">T / M / U / H</div>

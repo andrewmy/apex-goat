@@ -205,6 +205,21 @@ export class GoatController {
     this.outOfBounds = false;
   }
 
+  /** Dramatic knockback wipeout when struck by a triggered rockslide boulder or avalanche slab */
+  public triggerHazardWipeout(impactDir: THREE.Vector3): void {
+    if (this.bailedOut || this.finishedMode) return;
+    this.bailedOut = true;
+    this.outOfBounds = false;
+    this.bailTimer = 0;
+    this.grounded = false;
+    this.wallRunning = false;
+    this.crouching = false;
+    this.activeGroundPump = 0;
+    this.flipVel = (Math.random() > 0.5 ? 1 : -1) * 9.5;
+    this.spinVel = (Math.random() > 0.5 ? 1 : -1) * 11.0;
+    this.velocity.copy(impactDir).normalize().multiplyScalar(17.5).addScaledVector(WORLD_UP, 8.8);
+  }
+
   public step(
     dt: number,
     input: InputState,

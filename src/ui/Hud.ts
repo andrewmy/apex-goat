@@ -47,6 +47,7 @@ import { getSurfaceConfig } from '../physics/SurfaceMaterials';
 import { CameraMode } from '../camera/GoatCamera';
 import { SplitEvent } from '../world/Checkpoints';
 import { ScenePreset } from '../world/WeatherPresets';
+import { HazardFlavor } from '../world/AlpineHazard';
 
 export function formatTime(sec: number): string {
   const clamped = Math.max(0, sec);
@@ -77,6 +78,12 @@ export class Hud {
   private readonly finishPbEl = document.getElementById('finish-pb');
   private readonly nextMedalEl = document.getElementById('next-medal-target');
   private readonly scenePillTextEl = document.getElementById('scene-pill-text');
+  private readonly hazardPillEl = document.getElementById('hazard-pill');
+  private readonly hazardPillTextEl = document.getElementById('hazard-pill-text');
+  private readonly mobileHazardBtnEl = document.getElementById('mobile-hazard-btn');
+  private readonly hazardWarningEl = document.getElementById('hazard-warning');
+  private readonly hazardWarnTitleEl = document.getElementById('hazard-warn-title');
+  private readonly hazardWarnSubEl = document.getElementById('hazard-warn-sub');
   private readonly pauseSceneBtnEl = document.getElementById('pause-scene-btn');
   private readonly speedArcEl = document.getElementById('speed-arc') as unknown as SVGCircleElement;
   private readonly pumpArcEl = document.getElementById('pump-arc') as unknown as SVGCircleElement;
@@ -135,6 +142,9 @@ export class Hud {
   private controlsHelpVisible = false;
   private currentScenePreset: ScenePreset | null = null;
   private lastDropText = '';
+  private lastHazardPillText = '';
+  private lastHazardWarnSub = '';
+  private lastHazardVisible = false;
 
   private lastSpeedText = '';
   private lastSlopeText = '';
@@ -308,6 +318,67 @@ export class Hud {
     this.wipeoutToastEl.classList.remove('visible');
   }
 
+  public updateHazardStatus(
+    active: boolean,
+    flavor: HazardFlavor,
+    speedKmh: number,
+    cooldownSec: number,
+  ): void {
+    const isAvalanche = flavor === 'avalanche';
+
+    if (this.hazardWarningEl) {
+      if (active !== this.lastHazardVisible) {
+        this.lastHazardVisible = active;
+        this.hazardWarningEl.classList.toggle('visible', active);
+        if (active && this.hazardWarnTitleEl) {
+          this.hazardWarnTitleEl.textContent = isAvalanche
+            ? '⚠ SLAB AVALANCHE'
+            : '⚠ ROCKSLIDE WARNING';
+        }
+      }
+      if (active && this.hazardWarnSubEl) {
+        const sub =
+          speedKmh > 15
+            ? `${speedKmh} KM/H · DODGE LATERALLY OR LEAP!`
+            : 'FRACTURING ABOVE · DODGE LATERALLY OR LEAP!';
+        if (sub !== this.lastHazardWarnSub) {
+          this.lastHazardWarnSub = sub;
+          this.hazardWarnSubEl.textContent = sub;
+        }
+      }
+    }
+
+    const cooling = !active && cooldownSec > 0.05;
+    let pillText: string;
+    let mobileText: string;
+    if (active) {
+      pillText = isAvalanche ? '⚠ AVALANCHE' : '⚠ ROCKSLIDE';
+      mobileText = '⚠ LIVE';
+    } else if (cooling) {
+      const sec = Math.ceil(cooldownSec);
+      pillText = `${isAvalanche ? '❄' : '⛰'} ${sec}S`;
+      mobileText = `⛰ ${sec}S`;
+    } else {
+      pillText = isAvalanche ? '❄ AVALANCHE' : '⛰ ROCKSLIDE';
+      mobileText = isAvalanche ? '❄ SLAB' : '⛰ SLIDE';
+    }
+
+    if (pillText !== this.lastHazardPillText) {
+      this.lastHazardPillText = pillText;
+      if (this.hazardPillTextEl) this.hazardPillTextEl.textContent = pillText;
+      if (this.mobileHazardBtnEl) this.mobileHazardBtnEl.textContent = mobileText;
+    }
+
+    if (this.hazardPillEl) {
+      this.hazardPillEl.classList.toggle('active', active);
+      this.hazardPillEl.classList.toggle('cooldown', cooling);
+    }
+    if (this.mobileHazardBtnEl) {
+      this.mobileHazardBtnEl.classList.toggle('active', active);
+      this.mobileHazardBtnEl.classList.toggle('cooldown', cooling);
+    }
+  }
+
   public setCameraMode(mode: CameraMode): void {
     this.currentCamMode = mode;
     this.renderCamLabel(this.lastFpsDisplay);
@@ -448,14 +519,14 @@ export class Hud {
     } else {
       this.controlsHintBodyEl.innerHTML = `
         <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Sprint &amp; Carve · <kbd>SPACE</kbd> Leap</div>
-        <div><kbd>SHIFT</kbd> Pump / Dive · <kbd>F</kbd> Ram · <kbd>B</kbd> Bleat</div>
+        <div><kbd>SHIFT</kbd> Pump / Dive · <kbd>F</kbd> Ram · <kbd>B</kbd> Bleat · <kbd>G</kbd> Rockslide</div>
         <div><kbd>R</kbd> Restart · <kbd>BKSP</kbd> CP · <kbd>C</kbd> Cam · <kbd>T</kbd> Scene · <kbd>M</kbd> Map · <kbd>U</kbd> Audio</div>
       `;
       if (this.startTipsEl) {
         this.startTipsEl.innerHTML = `
           <div><strong>Slope-Pump (SHIFT):</strong> Dive onto steep backsides to convert drop into a massive speed surge.</div>
           <div><strong>Ram (F) &amp; Wall-Kick (SPACE):</strong> Blast herd goats (+18 km/h) or kick off steep walls.</div>
-          <div><strong>Quick Keys:</strong> <strong>T</strong> Scene · <strong>M</strong> Map · <strong>C</strong> Cam · <strong>U</strong> Audio · <strong>H</strong> Controls.</div>
+          <div><strong>Quick Keys:</strong> <strong>T</strong> Scene · <strong>M</strong> Map · <strong>G</strong> Rockslide · <strong>C</strong> Cam · <strong>U</strong> Audio.</div>
         `;
       }
       if (this.pauseTricksEl) {
