@@ -288,25 +288,33 @@ export class GoatRig {
     // Iconic Swept-Back Curved Black Horns (signature silhouette in GoPro POV!)
     for (const side of [-1, 1]) {
       const hornGroup = new THREE.Group();
-      hornGroup.position.set(side * 0.065, 0.1, 0.02);
-      hornGroup.rotation.z = -side * 0.22;
-      hornGroup.rotation.x = -0.35;
+      hornGroup.position.set(side * 0.064, 0.095, 0.02);
+      hornGroup.rotation.x = 0.24;
+      hornGroup.rotation.z = -side * 0.16;
 
       const seg1 = new THREE.Mesh(assets.hornSeg1Geo, this.darkMat);
       seg1.position.set(0, 0.09, 0);
       hornGroup.add(seg1);
 
+      const seg2Pivot = new THREE.Group();
+      seg2Pivot.position.set(0, 0.168, 0);
+      seg2Pivot.rotation.x = 0.34;
+      seg2Pivot.rotation.z = -side * 0.1;
+      hornGroup.add(seg2Pivot);
+
       const seg2 = new THREE.Mesh(assets.hornSeg2Geo, this.darkMat);
-      seg2.position.set(side * 0.03, 0.23, 0.06);
-      seg2.rotation.x = -0.45;
-      seg2.rotation.z = -side * 0.18;
-      hornGroup.add(seg2);
+      seg2.position.set(0, 0.085, 0);
+      seg2Pivot.add(seg2);
+
+      const tipPivot = new THREE.Group();
+      tipPivot.position.set(0, 0.16, 0);
+      tipPivot.rotation.x = 0.38;
+      tipPivot.rotation.z = -side * 0.08;
+      seg2Pivot.add(tipPivot);
 
       const tip = new THREE.Mesh(assets.hornTipGeo, this.darkMat);
-      tip.position.set(side * 0.06, 0.34, 0.14);
-      tip.rotation.x = -0.72;
-      tip.rotation.z = -side * 0.24;
-      hornGroup.add(tip);
+      tip.position.set(0, 0.06, 0);
+      tipPivot.add(tip);
 
       this.headPivot.add(hornGroup);
     }
