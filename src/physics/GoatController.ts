@@ -66,6 +66,9 @@ export class GoatController {
   public finishedMode = false;
   public activeGroundPump = 0; // 0..1 glow when actively pumping down a steep face!
   public pumpReady = false;
+  public headbuttTimer = 0;
+  public headbuttCooldown = 0;
+  public headbuttAnim = 0;
 
   private coyoteTimer = 0;
   private wallCoyoteTimer = 0;
@@ -133,7 +136,27 @@ export class GoatController {
     this.finishedMode = false;
     this.activeGroundPump = 0;
     this.pumpReady = false;
+    this.headbuttTimer = 0;
+    this.headbuttCooldown = 0;
+    this.headbuttAnim = 0;
     this.slopeDeg = 0;
+  }
+
+  public isHeadbutting(): boolean {
+    return this.headbuttTimer > 0;
+  }
+
+  /** Called when the player rams a solid herd goat or shoulders into one */
+  public applyHerdBump(pushDir: THREE.Vector3, isRamHit: boolean): void {
+    if (isRamHit) {
+      // Crisp forward speed boost + surge flash for nailing a Headbutt Ram!
+      this.velocity.addScaledVector(this.forward, 5.2);
+      this.pumpBoostFlash = Math.max(this.pumpBoostFlash, 0.85);
+    } else {
+      // Gentle physical shoulder pushout (feels solid without killing your speed!)
+      this.position.addScaledVector(pushDir, 0.14);
+      this.velocity.addScaledVector(pushDir, 2.4);
+    }
   }
 
   public enterFinishState(): void {
@@ -149,6 +172,7 @@ export class GoatController {
       onLand?: (e: LandingEvent) => void;
       onJump?: (e: JumpEvent) => void;
       onOutOfBounds?: () => void;
+      onHeadbuttStart?: () => void;
     },
   ): void {
     this.prevPosition.copy(this.position);
@@ -157,6 +181,10 @@ export class GoatController {
 
     this.pumpBoostFlash = Math.max(0, this.pumpBoostFlash - dt * 1.9);
     this.justJumpedTimer = Math.max(0, this.justJumpedTimer - dt);
+    this.headbuttTimer = Math.max(0, this.headbuttTimer - dt);
+    this.headbuttCooldown = Math.max(0, this.headbuttCooldown - dt);
+    const targetHeadbuttAnim = this.headbuttTimer > 0 ? 1 : 0;
+    this.headbuttAnim += (targetHeadbuttAnim - this.headbuttAnim) * Math.min(1, dt * 24);
 
     if (this.bailedOut) {
       this.stepBailout(dt);
@@ -191,6 +219,14 @@ export class GoatController {
       this.jumpBufferTimer = 0.14;
     } else {
       this.jumpBufferTimer = Math.max(0, this.jumpBufferTimer - dt);
+    }
+
+    // Trigger Headbutt Ram lunge (snappy forward horn-charge burst!)
+    if (input.headbuttJustPressed && this.headbuttCooldown <= 0) {
+      this.headbuttTimer = 0.28;
+      this.headbuttCooldown = 0.55;
+      this.velocity.addScaledVector(this.forward, this.grounded ? 4.8 : 3.2);
+      callbacks?.onHeadbuttStart?.();
     }
 
     this.crouching = input.crouchHeld;
@@ -826,6 +862,7 @@ export class GoatController {
     out.bailTimer = this.bailTimer;
     out.airTime = this.airTime;
     out.gaitPhase = this.gaitPhase;
+    out.headbuttAnim = this.headbuttAnim;
     out.exposureHeight = this.exposureHeight;
   }
 }

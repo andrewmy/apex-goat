@@ -189,13 +189,13 @@ export class Hud {
     if (device === 'gamepad') {
       this.controlsHintEl.innerHTML = `
         <div><kbd>RT</kbd>/<kbd>LT</kbd> Sprint &amp; Brake · <kbd>L-STICK</kbd> Carve · <kbd>A</kbd> Leap</div>
-        <div><kbd>RB</kbd>/<kbd>B</kbd> Slope-Pump / Dive · <kbd>X</kbd> Bleat</div>
+        <div><kbd>RB</kbd>/<kbd>B</kbd> Pump / Dive · <kbd>X</kbd> Headbutt Ram · <kbd>↑</kbd> Bleat</div>
         <div><kbd>Y</kbd> Restart · <kbd>LB</kbd> Checkpoint · <kbd>VIEW</kbd> Cam · <kbd>MENU</kbd> Pause</div>
       `;
       if (this.startTipsEl) {
         this.startTipsEl.innerHTML = `
           <div><strong>Slope-Pumping (RB / B):</strong> Hold <strong>RB</strong> or <strong>B</strong> in mid-air to fast-dive onto steep roller backsides—landing crouched converts drop into a massive speed surge!</div>
-          <div><strong>Climbing &amp; Wall-Kicks:</strong> Hold <strong>RT</strong> to claw up steep granite, or carve onto steep cliff walls at speed and tap <strong>A / &times;</strong> to Wall-Kick.</div>
+          <div><strong>Headbutt Ram (X) &amp; Wall-Kicks (A):</strong> Charge into rival herd goats with <strong>X</strong> to launch them flying for a speed boost, or tap <strong>A / &times;</strong> off steep cliffs to Wall-Kick.</div>
           <div><strong>Cameras &amp; Instant Loop:</strong> Starts in Chase Cam; press <strong>VIEW</strong> for GoPro Action POV, <strong>Y</strong> for instant restart, or <strong>LB</strong> for last checkpoint.</div>
         `;
       }
@@ -207,13 +207,13 @@ export class Hud {
     } else {
       this.controlsHintEl.innerHTML = `
         <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Sprint &amp; Carve · <kbd>SPACE</kbd> Leap</div>
-        <div><kbd>SHIFT</kbd> Hoof-Grip / Dive-Pump · <kbd>B</kbd> Bleat</div>
+        <div><kbd>SHIFT</kbd> Pump / Dive · <kbd>F</kbd> Headbutt Ram · <kbd>B</kbd> Bleat</div>
         <div><kbd>R</kbd> Restart · <kbd>BKSP</kbd> Checkpoint · <kbd>C</kbd> Camera · <kbd>ESC</kbd>/<kbd>P</kbd> Pause</div>
       `;
       if (this.startTipsEl) {
         this.startTipsEl.innerHTML = `
           <div><strong>Slope-Pumping (SHIFT):</strong> Hold <strong>SHIFT</strong> in mid-air to fast-dive onto steep roller backsides—landing crouched converts drop into a massive speed surge!</div>
-          <div><strong>Climbing &amp; Wall-Kicks:</strong> Hold <strong>W</strong> to claw up steep granite, or carve onto steep cliff walls at speed and tap <strong>SPACE</strong> to Wall-Kick.</div>
+          <div><strong>Headbutt Ram (F) &amp; Wall-Kicks (SPACE):</strong> Ram rival herd goats with <strong>F</strong> to send them flying for a speed boost, or tap <strong>SPACE</strong> off steep cliffs to Wall-Kick.</div>
           <div><strong>Cameras &amp; Instant Loop:</strong> Starts in Chase Cam; press <strong>C</strong> for GoPro Action POV, <strong>R</strong> for instant restart, or <strong>BKSP</strong> for last checkpoint.</div>
         `;
       }

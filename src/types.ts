@@ -44,6 +44,7 @@ export interface InputState {
   jumpJustPressed: boolean;
   jumpJustReleased: boolean;
   crouchHeld: boolean;
+  headbuttJustPressed: boolean;
   bleatJustPressed: boolean;
   restartJustPressed: boolean;
   checkpointJustPressed: boolean;
@@ -78,6 +79,7 @@ export interface GoatPhysicsSnapshot {
   outOfBounds: boolean;
   airTime: number;
   gaitPhase: number;
+  headbuttAnim: number; // 0..1 horn-charge lunge animation
   exposureHeight: number; // estimated cliff drop distance right beside player
 }
 

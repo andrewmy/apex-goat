@@ -260,7 +260,7 @@ export class GoatAudio {
   }
 
   /** Cheeky procedural formant goat bleat ("MAAA-AAA-AH!") on B key or bailout */
-  public playBleat(): void {
+  public playBleat(pitchMul = 1.0): void {
     if (!this.initialized || !this.ctx || !this.masterGain) return;
     const now = this.ctx.currentTime;
 
@@ -271,21 +271,21 @@ export class GoatAudio {
     const gain = this.ctx.createGain();
 
     osc.type = 'sawtooth';
-    const basePitch = 285 + Math.random() * 55;
+    const basePitch = (285 + Math.random() * 55) * pitchMul;
     osc.frequency.setValueAtTime(basePitch, now);
     osc.frequency.linearRampToValueAtTime(basePitch * 1.12, now + 0.14);
     osc.frequency.exponentialRampToValueAtTime(basePitch * 0.78, now + 0.44);
 
     // Classic rapid goat vibrato wobble (~22 Hz!)
     vibrato.frequency.value = 21 + Math.random() * 4;
-    vibGain.gain.value = 26;
+    vibGain.gain.value = 26 * pitchMul;
     vibrato.connect(vibGain);
     vibGain.connect(osc.frequency);
 
     formant.type = 'bandpass';
-    formant.frequency.setValueAtTime(980, now);
-    formant.frequency.linearRampToValueAtTime(1450, now + 0.16);
-    formant.frequency.linearRampToValueAtTime(840, now + 0.44);
+    formant.frequency.setValueAtTime(980 * pitchMul, now);
+    formant.frequency.linearRampToValueAtTime(1450 * pitchMul, now + 0.16);
+    formant.frequency.linearRampToValueAtTime(840 * pitchMul, now + 0.44);
     formant.Q.value = 3.2;
 
     gain.gain.setValueAtTime(0.001, now);
@@ -301,5 +301,64 @@ export class GoatAudio {
     vibrato.start(now);
     osc.stop(now + 0.48);
     vibrato.stop(now + 0.48);
+  }
+
+  /** Snappy horn-lunge whoosh when initiating a Headbutt Ram */
+  public playHeadbuttSwing(): void {
+    if (!this.initialized || !this.ctx || !this.noiseBuffer || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer;
+    const filt = this.ctx.createBiquadFilter();
+    filt.type = 'bandpass';
+    filt.frequency.setValueAtTime(340, now);
+    filt.frequency.exponentialRampToValueAtTime(1100, now + 0.12);
+    filt.Q.value = 2.0;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.22, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+    src.connect(filt);
+    filt.connect(gain);
+    gain.connect(this.masterGain);
+    src.start(now, Math.random(), 0.18);
+  }
+
+  /** Meaty horn-crack + sub-bass punch + startled victim bleat when ramming a rival goat! */
+  public playHeadbuttHit(): void {
+    if (!this.initialized || !this.ctx || !this.noiseBuffer || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+
+    // 1. Deep punchy sub-bass thump
+    const sub = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(175, now);
+    sub.frequency.exponentialRampToValueAtTime(42, now + 0.16);
+    subGain.gain.setValueAtTime(0.42, now);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+    sub.connect(subGain);
+    subGain.connect(this.masterGain);
+    sub.start(now);
+    sub.stop(now + 0.19);
+
+    // 2. Crisp horn-clack crack
+    const crack = this.ctx.createBufferSource();
+    crack.buffer = this.noiseBuffer;
+    const filt = this.ctx.createBiquadFilter();
+    filt.type = 'bandpass';
+    filt.frequency.value = 2100;
+    filt.Q.value = 2.8;
+    const cGain = this.ctx.createGain();
+    cGain.gain.setValueAtTime(0.38, now);
+    cGain.gain.exponentialRampToValueAtTime(0.001, now + 0.075);
+    crack.connect(filt);
+    filt.connect(cGain);
+    cGain.connect(this.masterGain);
+    crack.start(now, Math.random(), 0.09);
+
+    // 3. Outraged higher-pitched victim goat bleat!
+    window.setTimeout(() => {
+      this.playBleat(1.28 + Math.random() * 0.18);
+    }, 35);
   }
 }

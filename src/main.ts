@@ -42,6 +42,7 @@ function createEmptySnapshot(): GoatPhysicsSnapshot {
     outOfBounds: false,
     airTime: 0,
     gaitPhase: 0,
+    headbuttAnim: 0,
     exposureHeight: 0,
   };
 }
@@ -381,11 +382,23 @@ class ApexGoatGame {
       const maxSteps = 8;
 
       while (this.accumulator >= this.fixedDt && steps < maxSteps) {
-        // Consume edge-triggered jump only on the first substep
+        // Consume edge-triggered jump & headbutt only on the first substep
         const subInput =
-          steps === 0 ? input : { ...input, jumpJustPressed: false, jumpJustReleased: false };
+          steps === 0
+            ? input
+            : {
+                ...input,
+                jumpJustPressed: false,
+                jumpJustReleased: false,
+                headbuttJustPressed: false,
+              };
 
         this.controller.step(this.fixedDt, subInput, {
+          onHeadbuttStart: () => {
+            this.audio.playHeadbuttSwing();
+            this.goatCam.addShake(0.18);
+            this.input.rumble(0.18, 0.35, 65);
+          },
           onJump: (ev) => {
             this.audio.playJump(ev.wallKick ? 0.9 : ev.charge);
             this.particles.emitBurst(
@@ -396,6 +409,7 @@ class ApexGoatGame {
             );
             if (ev.wallKick) {
               this.goatCam.addShake(0.35);
+              this.input.rumble(0.5, 0.72, 100);
               this.hud.showBanner('WALL KICK!', '+BOOST', 650);
             }
           },
@@ -409,18 +423,64 @@ class ApexGoatGame {
               ev.pumped ? 18 : 8,
             );
             if (ev.pumped) {
+              this.input.rumble(0.75, 0.6, 145);
               this.hud.showBanner(`SLOPE PUMP +${ev.pumpGainKmh} KM/H`, 'CLEAN TRANSITION!', 850);
-            }
-            if (ev.bailed) {
+            } else if (ev.bailed) {
+              this.input.rumble(0.95, 0.8, 240);
               this.audio.playBleat();
               this.hud.showBanner('WIPEOUT!', 'RESPAWNING...', 900);
+            } else if (ev.impactSpeed > 6) {
+              const str = Math.min(0.62, ev.impactSpeed / 26);
+              this.input.rumble(str, str * 0.65, 85);
             }
           },
           onOutOfBounds: () => {
+            this.input.rumble(0.85, 0.6, 200);
             this.audio.playBleat();
             this.hud.showBanner('OFF CLIFF', 'SNAPPING BACK TO TRACK', 650);
           },
         });
+
+        // Solid physical 28-goat herd hitboxes + multi-goat Headbutt Ram knockouts!
+        if (!this.controller.bailedOut && !this.checkpoints.runFinished) {
+          const herdHits = this.herd.resolvePlayerCollision(
+            this.controller.position,
+            this.controller.velocity,
+            this.controller.forward,
+            this.controller.isHeadbutting(),
+          );
+          let ramCountThisTick = 0;
+          for (const herdHit of herdHits) {
+            this.controller.applyHerdBump(herdHit.pushDir, herdHit.type === 'ram');
+            if (herdHit.type === 'ram') {
+              ramCountThisTick++;
+              this.audio.playHeadbuttHit();
+              this.goatCam.addShake(0.6);
+              this.input.rumble(0.98, 0.88, 170);
+              this.particles.emitBurst(
+                herdHit.position,
+                this.controller.velocity.clone().multiplyScalar(0.5),
+                herdHit.surface,
+                16,
+              );
+            } else {
+              this.audio.playHoofClack(herdHit.surface, 0.7);
+              this.goatCam.addShake(0.22);
+              this.input.rumble(0.38, 0.48, 75);
+              this.particles.emitBurst(
+                herdHit.position,
+                herdHit.pushDir.clone().multiplyScalar(3),
+                herdHit.surface,
+                5,
+              );
+            }
+          }
+          if (ramCountThisTick > 1) {
+            this.hud.showBanner(`MULTI-RAM ×${ramCountThisTick}!`, '+MASSIVE BOOST', 950);
+          } else if (ramCountThisTick === 1) {
+            this.hud.showBanner('HEADBUTT RAM!', '+18 KM/H BOOST', 850);
+          }
+        }
 
         // Update checkpoints & splits inside the fixed step for exact millisecond timing
         const split = this.checkpoints.update(
@@ -497,6 +557,16 @@ class ApexGoatGame {
     this.goatCam.update(frameDt, this.snapshot, this.rig, this.course);
     if (this.started) {
       this.audio.updateContinuous(this.snapshot);
+      // Subtle gravel/snow haptic texture on DualSense while carving fast on loose scree!
+      if (
+        this.snapshot.grounded &&
+        this.snapshot.surface === SurfaceType.Scree &&
+        this.snapshot.speed > 12 &&
+        !this.checkpoints.runFinished
+      ) {
+        const spdNorm = Math.min(1, this.snapshot.speed / 42);
+        this.input.rumble(0.05 * spdNorm, 0.18 * spdNorm, 85, true);
+      }
     }
     this.hud.update(
       this.checkpoints.runTime,

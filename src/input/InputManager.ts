@@ -4,7 +4,10 @@ export class InputManager {
   private keys = new Set<string>();
   private activeDevice: InputDevice = 'keyboard';
   private userTouchedKeyboard = false;
+  private rumblePriorityUntil = 0;
+  private lastScreeRumbleAt = 0;
   private prevJump = false;
+  private prevHeadbutt = false;
   private prevBleat = false;
   private prevRestart = false;
   private prevCheckpoint = false;
@@ -14,6 +17,7 @@ export class InputManager {
   private pendingActions = {
     jumpPressed: false,
     jumpReleased: false,
+    headbutt: false,
     bleat: false,
     restart: false,
     checkpoint: false,
@@ -52,6 +56,7 @@ export class InputManager {
       this.activeDevice = 'keyboard';
       this.userTouchedKeyboard = true;
       if (code === 'Space') this.pendingActions.jumpPressed = true;
+      if (code === 'KeyF') this.pendingActions.headbutt = true;
       if (code === 'KeyB') this.pendingActions.bleat = true;
       if (code === 'KeyR') this.pendingActions.restart = true;
       if (code === 'Backspace') this.pendingActions.checkpoint = true;
@@ -87,6 +92,7 @@ export class InputManager {
 
     let jumpJustPressed = this.pendingActions.jumpPressed;
     let jumpJustReleased = this.pendingActions.jumpReleased;
+    let headbuttJustPressed = this.pendingActions.headbutt;
     let bleatJustPressed = this.pendingActions.bleat;
     let restartJustPressed = this.pendingActions.restart;
     let checkpointJustPressed = this.pendingActions.checkpoint;
@@ -114,11 +120,12 @@ export class InputManager {
       const gpJump = pad.buttons[0]?.pressed ?? false; // A / Cross
       const gpBack = pad.buttons[1]?.pressed ?? false; // B / Circle (Back in menus, alt crouch in play)
       const gpCrouch = gpBack || (pad.buttons[5]?.pressed ?? false); // B / Circle or RB / R1
-      const gpBleat = pad.buttons[2]?.pressed ?? false; // X / Square
+      const gpHeadbutt = pad.buttons[2]?.pressed ?? false; // X / Square -> Headbutt Ram!
       const gpRestart = pad.buttons[3]?.pressed ?? false; // Y / Triangle
       const gpCp = pad.buttons[4]?.pressed ?? false; // LB / L1
       const gpCam = pad.buttons[8]?.pressed ?? false; // View / Share
       const gpPause = pad.buttons[9]?.pressed ?? false; // Menu / Options
+      const gpBleat = (pad.buttons[12]?.pressed || pad.buttons[11]?.pressed) ?? false; // D-Pad Up or R3
 
       // Auto-switch HUD glyphs to controller the moment any stick/trigger/button moves!
       if (
@@ -127,6 +134,7 @@ export class InputManager {
         lt > 0.08 ||
         gpJump ||
         gpCrouch ||
+        gpHeadbutt ||
         gpBleat ||
         gpRestart ||
         gpCp ||
@@ -145,6 +153,7 @@ export class InputManager {
       if (gpCrouch) crouchHeld = true;
       if (gpJump && !this.prevJump) jumpJustPressed = true;
       if (!gpJump && this.prevJump) jumpJustReleased = true;
+      if (gpHeadbutt && !this.prevHeadbutt) headbuttJustPressed = true;
       if (gpBleat && !this.prevBleat) bleatJustPressed = true;
       if (gpRestart && !this.prevRestart) restartJustPressed = true;
       if (gpCp && !this.prevCheckpoint) checkpointJustPressed = true;
@@ -153,6 +162,7 @@ export class InputManager {
       if (gpBack && !this.prevBack) backJustPressed = true;
 
       this.prevJump = gpJump;
+      this.prevHeadbutt = gpHeadbutt;
       this.prevBleat = gpBleat;
       this.prevRestart = gpRestart;
       this.prevCheckpoint = gpCp;
@@ -165,6 +175,7 @@ export class InputManager {
     // Clear edge-triggered flags after consumption
     this.pendingActions.jumpPressed = false;
     this.pendingActions.jumpReleased = false;
+    this.pendingActions.headbutt = false;
     this.pendingActions.bleat = false;
     this.pendingActions.restart = false;
     this.pendingActions.checkpoint = false;
@@ -180,6 +191,7 @@ export class InputManager {
       jumpJustPressed,
       jumpJustReleased,
       crouchHeld,
+      headbuttJustPressed,
       bleatJustPressed,
       restartJustPressed,
       checkpointJustPressed,
@@ -187,6 +199,72 @@ export class InputManager {
       pauseJustPressed,
       backJustPressed,
     };
+  }
+
+  /**
+   * Triggers DualSense / Xbox dual-rumble haptic feedback via the HTML5 Gamepad API.
+   * Priority impacts (ram hits, landings, wall-kicks) automatically override subtle surface texture rumble.
+   */
+  public rumble(
+    strongMagnitude: number,
+    weakMagnitude: number,
+    durationMs: number,
+    isSurfaceTexture = false,
+  ): void {
+    const now = performance.now();
+    if (isSurfaceTexture) {
+      if (now < this.rumblePriorityUntil || now - this.lastScreeRumbleAt < 90) return;
+      this.lastScreeRumbleAt = now;
+    } else {
+      this.rumblePriorityUntil = Math.max(this.rumblePriorityUntil, now + durationMs);
+    }
+
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    for (const pad of pads) {
+      if (!pad || !pad.connected) continue;
+      const actuator = (
+        pad as Gamepad & {
+          vibrationActuator?: {
+            playEffect?: (
+              type: string,
+              params: {
+                startDelay?: number;
+                duration: number;
+                weakMagnitude: number;
+                strongMagnitude: number;
+              },
+            ) => Promise<string>;
+          };
+          hapticActuators?: Array<{ pulse?: (value: number, duration: number) => Promise<boolean> }>;
+        }
+      ).vibrationActuator;
+
+      const s = Math.max(0, Math.min(1, strongMagnitude));
+      const w = Math.max(0, Math.min(1, weakMagnitude));
+
+      if (actuator && typeof actuator.playEffect === 'function') {
+        actuator
+          .playEffect('dual-rumble', {
+            startDelay: 0,
+            duration: durationMs,
+            strongMagnitude: s,
+            weakMagnitude: w,
+          })
+          .catch(() => {});
+        break;
+      }
+
+      // Fallback for older Safari / Firefox hapticActuators
+      const legacy = (
+        pad as Gamepad & {
+          hapticActuators?: Array<{ pulse?: (value: number, duration: number) => Promise<boolean> }>;
+        }
+      ).hapticActuators;
+      if (legacy && legacy[0] && typeof legacy[0].pulse === 'function') {
+        legacy[0].pulse(Math.max(s, w), durationMs).catch(() => {});
+        break;
+      }
+    }
   }
 
   public dispose(): void {
