@@ -94,12 +94,31 @@ export class InputManager {
 
   public poll(): InputState {
     let throttle = 0;
-    if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) throttle += 1;
-    if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) throttle -= 1;
+    if (this.keys.has('KeyW')) throttle += 1;
+    if (this.keys.has('KeyS')) throttle -= 1;
 
     let steer = 0;
-    if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) steer -= 1;
-    if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) steer += 1;
+    if (this.keys.has('KeyA')) steer -= 1;
+    if (this.keys.has('KeyD')) steer += 1;
+
+    // Keyboard air tricks (no modifier!):
+    // Arrow keys whip flips & 360 spins cleanly without fighting WASD sprint/air-steering
+    // (S also tilts backflip Elasto-Mania style when airborne!).
+    let airPitch = 0;
+    if (this.keys.has('ArrowUp')) airPitch += 1;
+    if (this.keys.has('ArrowDown') || this.keys.has('KeyS')) airPitch -= 1;
+    let airSpin = 0;
+    if (this.keys.has('ArrowLeft')) airSpin -= 1;
+    if (this.keys.has('ArrowRight')) airSpin += 1;
+    // Allow Arrow keys to also drive/steer if user prefers arrows on the ground
+    if (throttle === 0) {
+      if (this.keys.has('ArrowUp')) throttle += 1;
+      if (this.keys.has('ArrowDown')) throttle -= 1;
+    }
+    if (steer === 0) {
+      if (this.keys.has('ArrowLeft')) steer -= 1;
+      if (this.keys.has('ArrowRight')) steer += 1;
+    }
 
     let jumpHeld = this.keys.has('Space');
     let crouchHeld =
@@ -127,9 +146,15 @@ export class InputManager {
         this.activeDevice = 'gamepad';
       }
       const rawStickX = pad.axes[0] ?? 0;
+      const rawStickY = pad.axes[1] ?? 0; // -1 stick up (frontflip), +1 stick down (backflip)
+      const rawRightX = pad.axes[2] ?? 0; // Right Stick X -> clean 360 spin (no heading drift!)
+      const rawRightY = pad.axes[3] ?? 0; // Right Stick Y -> alt flip pitch!
       const dpadLeft = pad.buttons[14]?.pressed ? -1 : 0;
       const dpadRight = pad.buttons[15]?.pressed ? 1 : 0;
       const stickX = Math.abs(rawStickX) > 0.14 ? rawStickX : dpadLeft + dpadRight;
+      const stickY = Math.abs(rawStickY) > 0.22 ? -rawStickY : 0;
+      const rightX = Math.abs(rawRightX) > 0.2 ? rawRightX : 0;
+      const rightY = Math.abs(rawRightY) > 0.2 ? -rawRightY : 0;
       const rt = pad.buttons[7]?.value ?? 0;
       const lt = pad.buttons[6]?.value ?? 0;
 
@@ -146,6 +171,9 @@ export class InputManager {
       // Auto-switch HUD glyphs to controller the moment any stick/trigger/button moves!
       if (
         Math.abs(stickX) > 0.15 ||
+        Math.abs(stickY) > 0.22 ||
+        Math.abs(rightX) > 0.22 ||
+        Math.abs(rightY) > 0.22 ||
         rt > 0.08 ||
         lt > 0.08 ||
         gpJump ||
@@ -161,6 +189,10 @@ export class InputManager {
       }
 
       if (Math.abs(stickX) > Math.abs(steer)) steer = stickX;
+      // Direct Elasto-Mania style flips on Left Stick Y OR Right Stick Y; 360 spins on Right Stick X!
+      const gpPitch = Math.abs(rightY) > Math.abs(stickY) ? rightY : stickY;
+      if (Math.abs(gpPitch) > Math.abs(airPitch)) airPitch = gpPitch;
+      if (Math.abs(rightX) > Math.abs(airSpin)) airSpin = rightX;
       if (rt > 0.05 || lt > 0.05) {
         throttle = Math.max(-1, Math.min(1, rt - lt));
       }
@@ -204,6 +236,8 @@ export class InputManager {
       gamepadLayout: this.gamepadLayout,
       throttle,
       steer,
+      airPitch,
+      airSpin,
       jumpHeld,
       jumpJustPressed,
       jumpJustReleased,

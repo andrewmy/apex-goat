@@ -248,6 +248,27 @@ export class GoatAudio {
     }
   }
 
+  /** Crisp celebratory arpeggio + punch when stomping a mid-air flip or 360 spin! */
+  public playTrickStomp(tier: number): void {
+    if (!this.initialized || !this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    const notes = tier >= 2 ? [523.25, 659.25, 783.99, 1046.5] : [440, 587.33, 880];
+    notes.forEach((freq, idx) => {
+      if (!this.ctx || !this.masterGain) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      const t0 = now + idx * 0.045;
+      osc.frequency.setValueAtTime(freq, t0);
+      gain.gain.setValueAtTime(0.16, t0);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.2);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t0);
+      osc.stop(t0 + 0.22);
+    });
+  }
+
   public playCheckpoint(isFinish: boolean, ahead: boolean): void {
     if (!this.initialized || !this.ctx || !this.masterGain) return;
     const now = this.ctx.currentTime;

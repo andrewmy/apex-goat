@@ -80,12 +80,19 @@ export class QuadrupedIK {
     const wallLean = snap.wallRunning ? -snap.wallSide * 0.42 : 0;
     this.rig.bodyPivot.rotation.z = -snap.steerAngle * (0.15 + 0.16 * speedNorm) + wallLean;
 
-    // Pitch body subtly during gallop, aerial dive tuck, headbutt charge, or mid-air leap
+    // Pitch body subtly during gallop, aerial dive tuck, headbutt charge, or FULL 360° mid-air flips & spins!
     const aerialDivePitch = !snap.grounded && snap.crouching ? -0.35 : 0;
     const airPitch = snap.grounded
       ? Math.cos(snap.gaitPhase * Math.PI * 2) * 0.08 * speedNorm
       : THREE.MathUtils.clamp(snap.velocity.y * 0.03, -0.45, 0.45) + aerialDivePitch;
-    this.rig.bodyPivot.rotation.x = airPitch - snap.crouchAmount * 0.1 - snap.headbuttAnim * 0.22;
+    // Note: in Three.js local space (-Z forward), negative X rotation pitches nose DOWN (frontflip!)
+    this.rig.bodyPivot.rotation.order = 'YXZ';
+    this.rig.bodyPivot.rotation.y = snap.grounded ? 0 : snap.spinAngle;
+    this.rig.bodyPivot.rotation.x =
+      airPitch -
+      snap.crouchAmount * 0.1 -
+      snap.headbuttAnim * 0.22 -
+      (snap.grounded ? 0 : snap.flipAngle);
 
     // Neck & Head lunge forward with horns lowered during a Headbutt Ram, or tilt proudly skyward on Bleat!
     this.rig.neckPivot.rotation.x = -snap.headbuttAnim * 0.52 + snap.bleatAnim * 0.28;

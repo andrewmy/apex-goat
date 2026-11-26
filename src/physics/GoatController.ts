@@ -10,6 +10,10 @@ export interface LandingEvent {
   pumped: boolean;
   pumpGainKmh: number;
   bailed: boolean;
+  trickBail: boolean;
+  trickLabel: string | null;
+  trickBoostKmh: number;
+  trickCount: number;
 }
 
 export interface JumpEvent {
@@ -71,6 +75,10 @@ export class GoatController {
   public headbuttAnim = 0;
   public bleatAnim = 0;
   public apexBleatCooldown = 0;
+  public flipAngle = 0; // + frontflip, - backflip (radians)
+  public spinAngle = 0; // accumulated 360 spin (radians)
+  private flipVel = 0;
+  private spinVel = 0;
 
   private coyoteTimer = 0;
   private wallCoyoteTimer = 0;
@@ -143,6 +151,10 @@ export class GoatController {
     this.headbuttAnim = 0;
     this.bleatAnim = 0;
     this.apexBleatCooldown = 0;
+    this.flipAngle = 0;
+    this.spinAngle = 0;
+    this.flipVel = 0;
+    this.spinVel = 0;
     this.slopeDeg = 0;
   }
 
@@ -279,10 +291,10 @@ export class GoatController {
     const speedFactor = THREE.MathUtils.clamp(speed / 36, 0, 1);
 
     // Horizon-stabilized steering axis (80% WORLD_UP + 20% groundNormal)
-    // -> Prevents disorienting sideways yaw flips when climbing/traversing steep rock!
+    // Air steering turns smoothly and never gets hijacked by 360 spins!
     const turnRate =
       THREE.MathUtils.lerp(3.1, 1.55, speedFactor) *
-      (this.grounded ? THREE.MathUtils.lerp(0.76, 1.15, surfCfg.lateralGrip) : 0.72);
+      (this.grounded ? THREE.MathUtils.lerp(0.76, 1.15, surfCfg.lateralGrip) : 0.48);
 
     this.steerAngle += (input.steer - this.steerAngle) * Math.min(1, dt * 14);
 
@@ -399,18 +411,57 @@ export class GoatController {
       this.velocity.addScaledVector(this.wallNormal, -6.0 * dt);
       this.airTime = Math.min(this.airTime, 0.25);
     } else {
-      // AIRBORNE: crisp alpine gravity (hold SHIFT to Aerial Tuck / Fast-Dive!)
+      // AIRBORNE: crisp alpine gravity (hold SHIFT/R1 to Aerial Tuck / Fast-Dive!)
       this.activeGroundPump = Math.max(0, this.activeGroundPump - dt * 5.0);
       this.pumpReady = this.airTime > 0.16 && this.velocity.y < 1.5 && !this.crouching;
       const airGravity = this.crouching ? 52.0 : 31.5;
       this.velocity.y -= airGravity * dt;
       this.airTime += dt;
 
-      // Crisp air steering & pitch control
+      // MID-AIR FLIPS & 360 SPINS (decoupled from lateral air-steering!):
+      // Flips on Left Stick Y / Right Stick Y / Arrow Up-Down (Elasto Mania pitch feel!);
+      // 360 Spins on Right Stick X / Arrow Left-Right (flight heading stays rock-steady!).
+      if (this.airTime > 0.12) {
+        const tuckSpinMul = this.crouching ? 1.2 : 1.0;
+        if (Math.abs(input.airPitch) > 0.22) {
+          const targetFlipVel = input.airPitch * 7.6 * tuckSpinMul;
+          this.flipVel += (targetFlipVel - this.flipVel) * Math.min(1, dt * 14);
+        } else {
+          this.flipVel *= Math.max(0, 1 - dt * 8);
+          const nearestUpright = Math.round(this.flipAngle / (Math.PI * 2)) * (Math.PI * 2);
+          const err = nearestUpright - this.flipAngle;
+          if (Math.abs(err) < 1.15) {
+            this.flipAngle += err * Math.min(1, dt * 7.5);
+          }
+        }
+
+        if (Math.abs(input.airSpin) > 0.22) {
+          const targetSpinVel = -input.airSpin * 8.6 * tuckSpinMul;
+          this.spinVel += (targetSpinVel - this.spinVel) * Math.min(1, dt * 13);
+        } else {
+          this.spinVel *= Math.max(0, 1 - dt * 8);
+          const nearestSpin = Math.round(this.spinAngle / (Math.PI * 2)) * (Math.PI * 2);
+          const errS = nearestSpin - this.spinAngle;
+          if (Math.abs(errS) < 1.15) {
+            this.spinAngle += errS * Math.min(1, dt * 7.5);
+          }
+        }
+
+        this.flipAngle += this.flipVel * dt;
+        this.spinAngle += this.spinVel * dt;
+      }
+
+      // TRUE MID-AIR LATERAL "BODY ENGLISH" AIR-STEERING + forward air trim!
+      // Lets Left Stick / A-D genuinely guide your landing trajectory onto ledges & snow bowls!
       this._tmpA.copy(this.forward).setY(0);
       if (this._tmpA.lengthSq() > 0.001) {
         this._tmpA.normalize();
-        this.velocity.addScaledVector(this._tmpA, input.throttle * 6.5 * dt);
+        this._right.crossVectors(this._tmpA, WORLD_UP).normalize();
+        this.velocity.addScaledVector(this._tmpA, input.throttle * 5.2 * dt);
+        if (Math.abs(input.steer) > 0.05) {
+          // Lateral air-drift control (gentle enough to feel grounded, strong enough to save lines!)
+          this.velocity.addScaledVector(this._right, input.steer * 12.5 * dt);
+        }
       }
       this.velocity.multiplyScalar(Math.max(0, 1 - 0.04 * dt));
     }
@@ -504,15 +555,53 @@ export class GoatController {
 
     this.resolveCollisions(wasGrounded);
 
-    // LANDING & JUICY SLOPE-PUMPING SURGE!
+    // LANDING, TRICK STOMP EVALUATION & JUICY SLOPE-PUMPING SURGE!
     if (!wasGrounded && this.grounded && prevAirTime > 0.1) {
       const impactNormalSpeed = Math.max(0, -this._preImpactVel.dot(this.groundNormal));
       const verticalFallSpeed = Math.max(0, -this._preImpactVel.y);
       const landSurf = getSurfaceConfig(this.surface);
       const pumpInputActive = this.crouching || this.recentCrouchTimer > 0;
 
-      // Only bail out on extreme vertical splats onto flat ground without tucking
-      if (impactNormalSpeed > 36 && !pumpInputActive && this.slopeDeg < 16) {
+      // Evaluate Mid-Air Flip & Spin completion!
+      const twoPi = Math.PI * 2;
+      const nearestFlipMultiple = Math.round(this.flipAngle / twoPi) * twoPi;
+      const flipUprightErr = Math.abs(this.flipAngle - nearestFlipMultiple); // 0 = perfectly upright, π = upside-down
+      const attemptedFlip = Math.abs(this.flipAngle) > 1.35; // > 77° pitch commitment
+      const completedFlips = Math.floor((Math.abs(this.flipAngle) + 0.95) / twoPi);
+      const completedSpins = Math.floor((Math.abs(this.spinAngle) + 1.05) / twoPi);
+      const trickBail = attemptedFlip && flipUprightErr > 1.38; // landed > 79° off-upright -> face-plant!
+
+      let trickLabel: string | null = null;
+      let trickBoostKmh = 0;
+      const trickCount = trickBail ? 0 : completedFlips + completedSpins;
+
+      if (!trickBail && trickCount > 0) {
+        const flipDir = this.flipAngle > 0 ? 'FRONTFLIP' : 'BACKFLIP';
+        const flipStr =
+          completedFlips >= 2
+            ? `${completedFlips === 2 ? 'DOUBLE' : `${completedFlips}×`} ${flipDir}`
+            : completedFlips === 1
+              ? flipDir
+              : '';
+        const spinStr = completedSpins > 0 ? `${completedSpins * 360}` : '';
+
+        if (flipStr && spinStr) {
+          trickLabel = `${flipStr} ${spinStr}!`;
+        } else if (flipStr) {
+          trickLabel = `${flipStr}!`;
+        } else {
+          trickLabel = `${spinStr} SPIN!`;
+        }
+      }
+
+      // Reset air rotation cleanly on touchdown
+      this.flipAngle = 0;
+      this.spinAngle = 0;
+      this.flipVel = 0;
+      this.spinVel = 0;
+
+      // Bail out on upside-down trick face-plant OR extreme vertical splat onto flat ground
+      if (trickBail || (impactNormalSpeed > 36 && !pumpInputActive && this.slopeDeg < 16)) {
         this.triggerBailout(false);
         callbacks?.onLand?.({
           position: this.position.clone(),
@@ -521,6 +610,10 @@ export class GoatController {
           pumped: false,
           pumpGainKmh: 0,
           bailed: true,
+          trickBail,
+          trickLabel: null,
+          trickBoostKmh: 0,
+          trickCount: 0,
         });
       } else {
         const downhillDir = this._tmpB.set(0, -1, 0).projectOnPlane(this.groundNormal);
@@ -531,12 +624,19 @@ export class GoatController {
           this._slopeForward.copy(this.forward);
         }
 
+        // Apply Trick Stomp Boost on clean flip/spin landing!
+        if (trickCount > 0) {
+          const stompBoost = Math.min(13.5, 5.2 + (trickCount - 1) * 3.8);
+          this.velocity.addScaledVector(this._slopeForward, stompBoost);
+          trickBoostKmh = Math.round(stompBoost * 3.6);
+          this.pumpBoostFlash = 1.0;
+        }
+
         let pumped = false;
         let pumpGainKmh = 0;
 
         if (downhillDir.lengthSq() > 0.015) {
           downhillDir.normalize();
-          // Trigger cleanly whenever landing onto a forward downhill slope (even on banked turns!)
           const goingDownhill =
             this._slopeForward.y < -0.1 || downhillDir.dot(this._slopeForward) > 0.15;
           if (goingDownhill && this.slopeDeg >= 8) {
@@ -547,7 +647,6 @@ export class GoatController {
               18.0,
               energy * pumpEfficiency * slopeFactor * landSurf.landingRetention,
             );
-            // Aim boost 75% along player's slopeForward + 25% downhill so banked turns stay on-line!
             this._tmpA
               .copy(this._slopeForward)
               .multiplyScalar(0.75)
@@ -570,9 +669,19 @@ export class GoatController {
           pumped,
           pumpGainKmh,
           bailed: false,
+          trickBail: false,
+          trickLabel,
+          trickBoostKmh,
+          trickCount,
         });
       }
       this.airTime = 0;
+    } else if (this.grounded) {
+      // Smoothly decay any tiny residual air rotation if we touched down on a micro-hop
+      this.flipAngle *= Math.max(0, 1 - dt * 20);
+      this.spinAngle *= Math.max(0, 1 - dt * 20);
+      this.flipVel = 0;
+      this.spinVel = 0;
     }
 
     // Visual UP vector: cleanly follows slope normal (clamped slightly for pleasant camera/rig feel)
@@ -896,6 +1005,8 @@ export class GoatController {
     out.bleatAnim = this.bleatAnim;
     out.apexBleatReady =
       !this.grounded && this.airTime >= 0.24 && this.velocity.y > -8 && this.apexBleatCooldown <= 0;
+    out.flipAngle = this.flipAngle;
+    out.spinAngle = this.spinAngle;
     out.exposureHeight = this.exposureHeight;
   }
 }

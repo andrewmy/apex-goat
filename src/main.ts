@@ -45,6 +45,8 @@ function createEmptySnapshot(): GoatPhysicsSnapshot {
     headbuttAnim: 0,
     bleatAnim: 0,
     apexBleatReady: false,
+    flipAngle: 0,
+    spinAngle: 0,
     exposureHeight: 0,
   };
 }
@@ -440,20 +442,37 @@ class ApexGoatGame {
           },
           onLand: (ev) => {
             this.audio.playLanding(ev.impactSpeed, ev.pumped);
-            this.goatCam.addShake(Math.min(0.9, ev.impactSpeed / 24 + (ev.pumped ? 0.35 : 0)));
+            this.goatCam.addShake(
+              Math.min(
+                0.95,
+                ev.impactSpeed / 24 + (ev.pumped ? 0.35 : 0) + (ev.trickCount > 0 ? 0.35 : 0),
+              ),
+            );
             this.particles.emitBurst(
               ev.position.clone().add(new THREE.Vector3(0, -0.7, 0)),
               this.controller.velocity.clone().multiplyScalar(0.3),
               ev.surface,
-              ev.pumped ? 18 : 8,
+              ev.pumped || ev.trickCount > 0 ? 20 : 8,
             );
-            if (ev.pumped) {
-              this.input.rumble(0.75, 0.6, 145);
-              this.hud.showBanner(`SLOPE PUMP +${ev.pumpGainKmh} KM/H`, 'CLEAN TRANSITION!', 850);
-            } else if (ev.bailed) {
+            if (ev.bailed) {
               this.input.rumble(0.95, 0.8, 240);
               this.audio.playBleat();
-              this.hud.showBanner('WIPEOUT!', 'RESPAWNING...', 900);
+              this.hud.showBanner(
+                ev.trickBail ? 'TRICK BAIL!' : 'WIPEOUT!',
+                ev.trickBail ? 'UNDER-ROTATED LANDING' : 'RESPAWNING...',
+                900,
+              );
+            } else if (ev.trickLabel) {
+              this.audio.playTrickStomp(ev.trickCount);
+              this.input.rumble(0.82, 0.78, 160);
+              const totalGain = ev.trickBoostKmh + ev.pumpGainKmh;
+              const sub = ev.pumped
+                ? `STOMP + SLOPE PUMP (+${totalGain} KM/H)`
+                : `CLEAN STOMP · +${ev.trickBoostKmh} KM/H`;
+              this.hud.showBanner(ev.trickLabel, sub, 1100);
+            } else if (ev.pumped) {
+              this.input.rumble(0.75, 0.6, 145);
+              this.hud.showBanner(`SLOPE PUMP +${ev.pumpGainKmh} KM/H`, 'CLEAN TRANSITION!', 850);
             } else if (ev.impactSpeed > 6) {
               const str = Math.min(0.62, ev.impactSpeed / 26);
               this.input.rumble(str, str * 0.65, 85);

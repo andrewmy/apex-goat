@@ -272,10 +272,10 @@ export class Hud {
       }
       if (this.pauseTricksEl) {
         this.pauseTricksEl.innerHTML = `
-          <div><strong>Headbutt Ram:</strong> Tap <strong>${g.ram}</strong> to lunge horns-first into rival herd goats—blasts them tumbling off the cliff for a +18 km/h boost!</div>
-          <div><strong>Apex Bleat Taunt:</strong> Tap <strong>&uarr; / R3</strong> mid-air for an echoing canyon boost, or near herd goats to startle &amp; scatter them!</div>
-          <div><strong>Slope-Pump:</strong> Hold <strong>${g.pump} / ${g.back}</strong> while descending steep slopes (&ge;15&deg;) or diving from air for a huge speed surge.</div>
-          <div><strong>Wall-Kick:</strong> Carve onto steep rock (&ge;40&deg;) at speed and tap <strong>${g.jump}</strong> to kick off with a boost.</div>
+          <div><strong>Flips &amp; Spins:</strong> Tilt <strong>L-STICK &uarr;/&darr;</strong> to Flip &amp; <strong>R-STICK</strong> for 360 Spins/Flips while steering freely with L-STICK &larr;/&rarr;—stomp upright for a speed burst!</div>
+          <div><strong>Headbutt Ram:</strong> Tap <strong>${g.ram}</strong> to blast rival herd goats off the cliff for a +18 km/h boost!</div>
+          <div><strong>Apex Bleat Taunt:</strong> Tap <strong>&uarr; / R3</strong> mid-air for an echoing canyon boost, or near herd goats to scatter them!</div>
+          <div><strong>Slope-Pump &amp; Wall-Kick:</strong> Hold <strong>${g.pump} / ${g.back}</strong> on steep downhills (&ge;15&deg;) to pump; tap <strong>${g.jump}</strong> off steep cliffs (&ge;40&deg;) to Wall-Kick.</div>
         `;
       }
       if (this.startBtnEl) this.startBtnEl.textContent = `Drop In (Press ${g.jump} / ${g.pause})`;
@@ -300,10 +300,10 @@ export class Hud {
       }
       if (this.pauseTricksEl) {
         this.pauseTricksEl.innerHTML = `
-          <div><strong>Headbutt Ram:</strong> Tap <strong>F</strong> to lunge horns-first into rival herd goats—blasts them tumbling off the cliff for a +18 km/h boost!</div>
-          <div><strong>Apex Bleat Taunt:</strong> Tap <strong>B</strong> mid-air for an echoing canyon boost, or near herd goats to startle &amp; scatter them!</div>
-          <div><strong>Slope-Pump:</strong> Hold <strong>SHIFT</strong> while descending steep slopes (&ge;15&deg;) or diving from air for a huge speed surge.</div>
-          <div><strong>Wall-Kick:</strong> Carve onto steep rock (&ge;40&deg;) at speed and tap <strong>SPACE</strong> to kick off with a boost.</div>
+          <div><strong>Flips &amp; Spins:</strong> Use <strong>Arrow Keys</strong> (or <strong>S</strong> to Backflip) mid-air while steering freely with <strong>A/D</strong>—stomp upright for a speed burst!</div>
+          <div><strong>Headbutt Ram:</strong> Tap <strong>F</strong> to blast rival herd goats off the cliff for a +18 km/h boost!</div>
+          <div><strong>Apex Bleat Taunt:</strong> Tap <strong>B</strong> mid-air for an echoing canyon boost, or near herd goats to scatter them!</div>
+          <div><strong>Slope-Pump &amp; Wall-Kick:</strong> Hold <strong>SHIFT</strong> on steep downhills (&ge;15&deg;) to pump; tap <strong>SPACE</strong> off steep cliffs (&ge;40&deg;) to Wall-Kick.</div>
         `;
       }
       if (this.startBtnEl) this.startBtnEl.textContent = 'Drop In (Click or Press Space)';
@@ -349,9 +349,19 @@ export class Hud {
     let slopeStr: string;
     let slopeColor = '#9be0ff';
 
+    const flipDeg = Math.round(Math.abs((snap.flipAngle * 180) / Math.PI));
+    const spinDeg = Math.round(Math.abs((snap.spinAngle * 180) / Math.PI));
+    const doingAirTrick = !snap.grounded && (flipDeg >= 65 || spinDeg >= 90);
+
     if (snap.pumpingNow) {
       slopeStr = `PUMPING ++ (${Math.round(snap.slopeDeg)}°)`;
       slopeColor = '#47ff9c';
+    } else if (doingAirTrick) {
+      const fLabel =
+        flipDeg >= 65 ? `${snap.flipAngle > 0 ? 'FRONTFLIP' : 'BACKFLIP'} ${flipDeg}°` : '';
+      const sLabel = spinDeg >= 90 ? `SPIN ${spinDeg}°` : '';
+      slopeStr = [fLabel, sLabel].filter(Boolean).join(' · ');
+      slopeColor = '#ffd447';
     } else if (wallKickReady) {
       slopeStr = `WALL KICK · ${jumpKey}! (${Math.round(snap.slopeDeg)}°)`;
       slopeColor = '#ffd447';

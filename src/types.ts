@@ -42,6 +42,8 @@ export interface InputState {
   gamepadLayout: GamepadLayout;
   throttle: number; // -1..1
   steer: number; // -1..1 (-1 left, +1 right)
+  airPitch: number; // -1..1 (-1 backflip, +1 frontflip)
+  airSpin: number; // -1..1 (dedicated 360 spin decoupled from air-steering!)
   jumpHeld: boolean;
   jumpJustPressed: boolean;
   jumpJustReleased: boolean;
@@ -84,6 +86,8 @@ export interface GoatPhysicsSnapshot {
   headbuttAnim: number; // 0..1 horn-charge lunge animation
   bleatAnim: number; // 0..1 proud skyward bleat animation
   apexBleatReady: boolean;
+  flipAngle: number; // accumulated mid-air pitch flip radians (+ frontflip, - backflip)
+  spinAngle: number; // accumulated mid-air 360 spin radians
   exposureHeight: number; // estimated cliff drop distance right beside player
 }
 
