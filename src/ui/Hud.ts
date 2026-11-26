@@ -491,14 +491,14 @@ export class Hud {
     } else if (device === 'gamepad') {
       this.controlsHintBodyEl.innerHTML = `
         <div><kbd>${g.accel}</kbd>/<kbd>${g.brake}</kbd> Sprint &amp; Brake · <kbd>L-STICK</kbd> Carve · <kbd>${g.jump}</kbd> Leap</div>
-        <div><kbd>${g.pump}</kbd>/<kbd>${g.back}</kbd> Pump / Dive · <kbd>${g.ram}</kbd> Ram · <kbd>↑</kbd> Bleat</div>
+        <div><kbd>${g.pump}</kbd>/<kbd>${g.back}</kbd> Pump / Dive · <kbd>${g.ram}</kbd> Ram · <kbd>↑</kbd> Bleat · <kbd>L3</kbd> Snap</div>
         <div><kbd>${g.restart}</kbd> Restart · <kbd>${g.cp}</kbd> CP · <kbd>${g.cam}</kbd> Cam · <kbd>${g.pause}</kbd> Pause</div>
       `;
       if (this.startTipsEl) {
         this.startTipsEl.innerHTML = `
           <div><strong>Slope-Pump (${g.pump} / ${g.back}):</strong> Fast-dive onto steep backsides to convert drop into a massive speed surge.</div>
           <div><strong>Ram (${g.ram}) &amp; Wall-Kick (${g.jump}):</strong> Blast herd goats (+18 km/h) or kick off steep cliffs.</div>
-          <div><strong>Quick Controls:</strong> <strong>${g.cam}</strong> Cam · <strong>${g.restart}</strong> Restart · <strong>${g.cp}</strong> Checkpoint · <strong>${g.pause}</strong> Pause.</div>
+          <div><strong>Quick Controls:</strong> <strong>L3</strong> Screenshot · <strong>${g.cam}</strong> Cam · <strong>${g.restart}</strong> Restart · <strong>${g.cp}</strong> Checkpoint · <strong>${g.pause}</strong> Pause.</div>
         `;
       }
       if (this.pauseTricksEl) {
@@ -520,13 +520,13 @@ export class Hud {
       this.controlsHintBodyEl.innerHTML = `
         <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Sprint &amp; Carve · <kbd>SPACE</kbd> Leap</div>
         <div><kbd>SHIFT</kbd> Pump / Dive · <kbd>F</kbd> Ram · <kbd>B</kbd> Bleat · <kbd>G</kbd> Rockslide</div>
-        <div><kbd>R</kbd> Restart · <kbd>BKSP</kbd> CP · <kbd>C</kbd> Cam · <kbd>T</kbd> Scene · <kbd>M</kbd> Map · <kbd>U</kbd> Audio</div>
+        <div><kbd>Q</kbd> Snap · <kbd>R</kbd> Restart · <kbd>BKSP</kbd> CP · <kbd>C</kbd> Cam · <kbd>T</kbd> Scene · <kbd>M</kbd> Map · <kbd>U</kbd> Audio</div>
       `;
       if (this.startTipsEl) {
         this.startTipsEl.innerHTML = `
           <div><strong>Slope-Pump (SHIFT):</strong> Dive onto steep backsides to convert drop into a massive speed surge.</div>
           <div><strong>Ram (F) &amp; Wall-Kick (SPACE):</strong> Blast herd goats (+18 km/h) or kick off steep walls.</div>
-          <div><strong>Quick Keys:</strong> <strong>T</strong> Scene · <strong>M</strong> Map · <strong>G</strong> Rockslide · <strong>C</strong> Cam · <strong>U</strong> Audio.</div>
+          <div><strong>Quick Keys:</strong> <strong>Q</strong> Screenshot · <strong>T</strong> Scene · <strong>M</strong> Map · <strong>G</strong> Rockslide · <strong>C</strong> Cam · <strong>U</strong> Audio.</div>
         `;
       }
       if (this.pauseTricksEl) {

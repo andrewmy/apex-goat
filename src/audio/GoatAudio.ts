@@ -649,4 +649,35 @@ export class GoatAudio {
       crackSrc.start(t0, Math.random(), 0.26);
     }
   }
+
+  /** Snappy dual-curtain mechanical DSLR shutter click for quick screenshots */
+  public playShutter(): void {
+    if (!this.initialized || !this.ctx || !this.noiseBuffer || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+
+    const clicks: ReadonlyArray<{ offset: number; freq: number; q: number; gain: number }> = [
+      { offset: 0, freq: 3400, q: 2.4, gain: 0.28 },
+      { offset: 0.032, freq: 2450, q: 2.0, gain: 0.22 },
+    ];
+
+    for (const c of clicks) {
+      const t0 = now + c.offset;
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.noiseBuffer;
+
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = c.freq;
+      bp.Q.value = c.q;
+
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(c.gain, t0);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.026);
+
+      src.connect(bp);
+      bp.connect(g);
+      g.connect(this.masterGain);
+      src.start(t0, Math.random() * 0.8, 0.032);
+    }
+  }
 }

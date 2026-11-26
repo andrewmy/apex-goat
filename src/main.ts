@@ -25,6 +25,7 @@ import { CourseMap } from './ui/CourseMap';
 import { HorizonCompass } from './ui/HorizonCompass';
 import { OnboardingPointers } from './ui/OnboardingPointers';
 import { BuildBadge } from './ui/BuildBadge';
+import { ScreenshotCapture } from './ui/ScreenshotCapture';
 import { ComboTracker } from './scoring/ComboTracker';
 import { trackEvent, trackEventOnce } from './analytics';
 import { GoatPhysicsSnapshot, InputDevice, SurfaceType } from './types';
@@ -101,6 +102,7 @@ class ApexGoatGame {
   private readonly horizonCompass: HorizonCompass;
   private readonly onboarding: OnboardingPointers;
   private readonly combo: ComboTracker;
+  private readonly screenshot: ScreenshotCapture;
   public readonly buildBadge: BuildBadge;
 
   private readonly snapshot = createEmptySnapshot();
@@ -173,7 +175,10 @@ class ApexGoatGame {
     this.horizonCompass = new HorizonCompass();
     this.onboarding = new OnboardingPointers(this.isMobileProfile);
     this.combo = new ComboTracker();
+    this.screenshot = new ScreenshotCapture();
     this.buildBadge = new BuildBadge();
+
+    this.input.setKeyboardScreenshotHandler(() => this.captureScreenshot('keyboard'));
 
     this.hud.setPersonalBest(this.recorder.personalBest?.totalTime ?? null);
     this.hud.setCameraMode(this.goatCam.mode);
@@ -250,6 +255,32 @@ class ApexGoatGame {
     this.applyScenePreset(nextId, true);
     this.onboarding.dismiss('scene');
     trackEventOnce(`scene/${nextId}`, `Scene: ${nextId}`);
+  }
+
+  private captureScreenshot(source: 'keyboard' | 'gamepad'): void {
+    if (!this.screenshot.canCapture()) return;
+    if (source === 'keyboard') {
+      // Ensure WebGL backbuffer holds the current live frame before synchronous readback
+      this.renderer.render(this.scene, this.goatCam.camera);
+    }
+    const capturePromise = this.screenshot.capture(this.renderer.domElement);
+    this.audio.unlock();
+    this.audio.playShutter();
+    if (source === 'gamepad') {
+      this.input.rumble(0.22, 0.48, 60);
+    }
+    trackEventOnce('screenshot/snap', 'Quick Screenshot');
+    void capturePromise.then((res) => {
+      if (res.copiedToClipboard && res.savedToFile) {
+        this.hud.showMicroToast('📸 SNAP SAVED + COPIED');
+      } else if (res.copiedToClipboard) {
+        this.hud.showMicroToast('📸 SNAP COPIED TO CLIPBOARD');
+      } else if (res.savedToFile) {
+        this.hud.showMicroToast('📸 SNAP SAVED');
+      } else {
+        this.hud.showMicroToast('📸 SNAP FAILED');
+      }
+    });
   }
 
   private applyCoat(coatId: GoatCoatId): void {
@@ -723,6 +754,9 @@ class ApexGoatGame {
           this.togglePauseTab();
         }
         this.renderer.render(this.scene, this.goatCam.camera);
+        if (input.screenshotJustPressed) {
+          this.captureScreenshot('gamepad');
+        }
         return;
       }
 
@@ -1092,6 +1126,9 @@ class ApexGoatGame {
     this.input.updateTouchVisuals(this.snapshot);
 
     this.renderer.render(this.scene, this.goatCam.camera);
+    if (input.screenshotJustPressed) {
+      this.captureScreenshot('gamepad');
+    }
   };
 }
 

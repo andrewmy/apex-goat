@@ -60,6 +60,7 @@ export interface InputState {
   sceneCycleJustPressed: boolean;
   mapToggleJustPressed: boolean;
   hazardTriggerJustPressed: boolean;
+  screenshotJustPressed: boolean;
 }
 
 export interface GoatPhysicsSnapshot {

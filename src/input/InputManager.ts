@@ -32,6 +32,8 @@ export class InputManager {
   private prevPause = false;
   private prevBack = false;
   private prevHazard = false;
+  private prevScreenshot = false;
+  private keyboardScreenshotHandler: (() => void) | null = null;
   private pendingActions = {
     jumpPressed: false,
     jumpReleased: false,
@@ -46,6 +48,7 @@ export class InputManager {
     sceneCycle: false,
     mapToggle: false,
     hazardTrigger: false,
+    screenshot: false,
   };
 
   private onKeyDownBound: (e: KeyboardEvent) => void;
@@ -68,19 +71,25 @@ export class InputManager {
     window.addEventListener('blur', this.onBlurBound);
   }
 
+  public setKeyboardScreenshotHandler(handler: (() => void) | null): void {
+    this.keyboardScreenshotHandler = handler;
+  }
+
   public updateTouchVisuals(snap: GoatPhysicsSnapshot): void {
     this.touch.updateVisuals(snap);
   }
 
   private onKeyDown(e: KeyboardEvent): void {
     const code = e.code;
+    const isModified = e.metaKey || e.ctrlKey || e.altKey;
     if (
       code === 'Space' ||
       code === 'ArrowUp' ||
       code === 'ArrowDown' ||
       code === 'ArrowLeft' ||
       code === 'ArrowRight' ||
-      code === 'Backspace'
+      code === 'Backspace' ||
+      (code === 'F2' && !isModified)
     ) {
       e.preventDefault();
     }
@@ -100,6 +109,13 @@ export class InputManager {
       if (code === 'KeyT') this.pendingActions.sceneCycle = true;
       if (code === 'KeyM') this.pendingActions.mapToggle = true;
       if (code === 'KeyG') this.pendingActions.hazardTrigger = true;
+      if (!isModified && !e.repeat && (code === 'KeyQ' || code === 'F2')) {
+        if (this.keyboardScreenshotHandler) {
+          this.keyboardScreenshotHandler();
+        } else {
+          this.pendingActions.screenshot = true;
+        }
+      }
     }
     this.keys.add(code);
   }
@@ -161,6 +177,7 @@ export class InputManager {
     const sceneCycleJustPressed = this.pendingActions.sceneCycle;
     const mapToggleJustPressed = this.pendingActions.mapToggle;
     let hazardTriggerJustPressed = this.pendingActions.hazardTrigger;
+    let screenshotJustPressed = this.pendingActions.screenshot;
 
     // Poll standard HTML5 Gamepad API if connected
     let gamepadConnected = false;
@@ -196,6 +213,7 @@ export class InputManager {
       const gpPause = pad.buttons[9]?.pressed ?? false; // Menu / Options
       const gpBleat = (pad.buttons[12]?.pressed || pad.buttons[11]?.pressed) ?? false; // D-Pad Up or R3
       const gpHazard = pad.buttons[13]?.pressed ?? false; // D-Pad Down -> Trigger Rockslide/Avalanche
+      const gpScreenshot = pad.buttons[10]?.pressed ?? false; // L3 (Left Stick click) -> Quick Screenshot
 
       // Auto-switch HUD glyphs to controller the moment any stick/trigger/button moves!
       if (
@@ -213,7 +231,8 @@ export class InputManager {
         gpCp ||
         gpCam ||
         gpPause ||
-        gpHazard
+        gpHazard ||
+        gpScreenshot
       ) {
         this.activeDevice = 'gamepad';
       }
@@ -239,6 +258,7 @@ export class InputManager {
       if (gpPause && !this.prevPause) pauseJustPressed = true;
       if (gpBack && !this.prevBack) backJustPressed = true;
       if (gpHazard && !this.prevHazard) hazardTriggerJustPressed = true;
+      if (gpScreenshot && !this.prevScreenshot) screenshotJustPressed = true;
 
       this.prevJump = gpJump;
       this.prevHeadbutt = gpHeadbutt;
@@ -249,6 +269,7 @@ export class InputManager {
       this.prevPause = gpPause;
       this.prevBack = gpBack;
       this.prevHazard = gpHazard;
+      this.prevScreenshot = gpScreenshot;
       break;
     }
 
@@ -293,6 +314,7 @@ export class InputManager {
     this.pendingActions.sceneCycle = false;
     this.pendingActions.mapToggle = false;
     this.pendingActions.hazardTrigger = false;
+    this.pendingActions.screenshot = false;
 
     return {
       device: this.activeDevice,
@@ -318,6 +340,7 @@ export class InputManager {
       sceneCycleJustPressed,
       mapToggleJustPressed,
       hazardTriggerJustPressed,
+      screenshotJustPressed,
     };
   }
 

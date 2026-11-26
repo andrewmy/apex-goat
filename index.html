@@ -67,6 +67,25 @@
           rgba(255, 255, 255, 0.28) 100%
         );
       }
+      #shutter-flash {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background: #ffffff;
+        opacity: 0;
+        z-index: 45;
+      }
+      #shutter-flash.active {
+        animation: shutterFlash 200ms ease-out forwards;
+      }
+      @keyframes shutterFlash {
+        0% {
+          opacity: 0.42;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
       /* Minimal Trackmania-inspired HUD */
       #hud {
         position: fixed;
@@ -2249,6 +2268,7 @@
             <span id="next-medal-target" class="medal-gold">GOLD 00:32.00</span>
           </div>
           <div class="hud-hotkey-bar">
+            <span><kbd>Q</kbd> Snap</span>
             <span><kbd>M</kbd> Map</span>
             <span><kbd>C</kbd> Cam</span>
             <span><kbd>U</kbd> Audio</span>
@@ -2584,6 +2604,10 @@
             <div class="bind-key">G</div>
             <div class="bind-pad">D-Pad &darr;</div>
 
+            <div class="bind-act">Quick Screenshot</div>
+            <div class="bind-key">Q / F2</div>
+            <div class="bind-pad">L3</div>
+
             <div class="bind-act">Scene / Map / Audio / Help</div>
             <div class="bind-key">T / M / U / H</div>
             <div class="bind-pad">In Pause</div>
@@ -2706,6 +2730,7 @@
       </div>
     </div>
 
+    <div id="shutter-flash" aria-hidden="true"></div>
     <button id="build-badge" type="button">BUILD --</button>
 
     <script type="module" src="/src/main.ts"></script>

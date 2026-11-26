@@ -17,6 +17,7 @@ Supports both **Keyboard** and **Controller** with automatic HUD glyph switching
 | Headbutt Ram             | `F`         | `X` / `□`                                  |
 | Bleat                    | `B`         | `D-Pad ↑` / `R3`                           |
 | Toggle Camera            | `C`         | `View` / `Share`                           |
+| Quick Screenshot         | `Q` / `F2`  | `L3` (Left Stick Click)                    |
 | Instant Restart          | `R`         | `Y` / `△`                                  |
 | Last Checkpoint          | `Backspace` | `LB` / `L1`                                |
 | Pause / Back             | `Esc` / `P` | `Menu` / `Options` (`B` / `○` closes menu) |
@@ -26,6 +27,7 @@ Supports both **Keyboard** and **Controller** with automatic HUD glyph switching
 - **Auto-detection:** Plug in or connect a controller over USB or Bluetooth and press any button—HUD prompts, start tips, and pause controls switch automatically.
 - **Rumble:** Dual-rumble haptics fire on headbutt impacts, slope-pump landings, wall-kicks, wipeouts, and loose scree surfing in Chromium browsers (Chrome / Edge on macOS & Windows 11). On Windows 11, DualSense rumble is most reliable over USB-C; Xbox controllers rumble over both USB and Bluetooth.
 - **Browser requirement:** The Web Gamepad API requires a secure context (`https://` such as the GitHub Pages link above, or `http://localhost:5173/`).
+- **Quick Screenshot:** Press `Q`, `F2`, or click `L3` (Left Stick) mid-run to capture the 3D scene with live HUD overlays at full native resolution. Immediately downloads a timestamped PNG (`apex-goat-YYYYMMDD-HHMMSS.png`) and also copies the image to your clipboard on keyboard.
 
 ## Development
 
