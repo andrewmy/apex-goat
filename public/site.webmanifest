@@ -1,0 +1,32 @@
+{
+  "name": "APEX GOAT — Alpine Cliff Descent",
+  "short_name": "APEX GOAT",
+  "description": "High-speed 3D alpine cliff descent in your browser. Carve razor limestone ledges, slope-pump steep rollers at 180+ km/h, dodge rockslides, and chase your ghost.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a1220",
+  "theme_color": "#0a1220",
+  "categories": ["games", "sports"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
