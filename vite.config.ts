@@ -99,6 +99,7 @@ export default defineConfig(({ command }) => {
     base: command === 'serve' ? '/' : normalizeBase(process.env.VITE_BASE),
     plugins: [buildTrackerPlugin(), goatCounterPlugin(goatCounterEndpoint)],
     server: {
+      host: true,
       port: 5173,
       strictPort: true,
     },
