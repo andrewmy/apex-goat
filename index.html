@@ -1241,6 +1241,24 @@
           opacity 0.25s ease,
           visibility 0s linear 0.25s;
       }
+      #webgl-fallback,
+      .noscript-overlay {
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(
+          circle at 50% 42%,
+          rgba(16, 34, 60, 0.92),
+          rgba(7, 14, 27, 0.98)
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 70;
+        padding: 16px;
+      }
+      #webgl-fallback.hidden {
+        display: none;
+      }
       .modal-card {
         max-width: 500px;
         width: 92%;
@@ -2846,6 +2864,39 @@
 
     <div id="shutter-flash" aria-hidden="true"></div>
     <button id="build-badge" type="button">BUILD --</button>
+
+    <div
+      id="webgl-fallback"
+      class="hidden"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="webgl-fallback-title"
+    >
+      <div class="modal-card" style="max-width: 440px">
+        <div class="modal-kicker" id="webgl-fallback-kicker">Graphics Unavailable</div>
+        <div class="modal-title" id="webgl-fallback-title" style="font-size: 28px">
+          WebGL Required
+        </div>
+        <div class="modal-desc" id="webgl-fallback-desc">
+          APEX GOAT needs WebGL hardware graphics to render the 3D alpine course. Enable hardware
+          acceleration in your browser settings or try a modern browser.
+        </div>
+        <button type="button" class="play-btn" id="webgl-fallback-reload">Reload Page</button>
+      </div>
+    </div>
+
+    <noscript>
+      <div class="noscript-overlay" role="alert">
+        <div class="modal-card" style="max-width: 440px">
+          <div class="modal-kicker">APEX GOAT · Alpine Cliff Descent</div>
+          <div class="modal-title" style="font-size: 28px">JavaScript Required</div>
+          <div class="modal-desc">
+            APEX GOAT is an interactive 3D WebGL game. Please enable JavaScript in your browser to
+            play.
+          </div>
+        </div>
+      </div>
+    </noscript>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -127,6 +127,7 @@ class ApexGoatGame {
   private fpsFrameCount = 0;
   private fpsSampleStart = performance.now();
   private currentFps = 0;
+  private contextLost = false;
   private readonly fixedDt = 1 / 120; // Deterministic 120 Hz physics!
 
   constructor() {
@@ -188,12 +189,36 @@ class ApexGoatGame {
     this.bindUiEvents();
     this.applyScenePreset(this.currentSceneId, false);
     const onViewportResize = () => {
+      if (this.contextLost) return;
       this.renderer.setSize(window.innerWidth, window.innerHeight);
       this.goatCam.resize(window.innerWidth, window.innerHeight);
       this.updateOrientationGuard();
     };
     window.addEventListener('resize', onViewportResize);
     window.addEventListener('orientationchange', onViewportResize);
+
+    this.renderer.domElement.addEventListener('webglcontextlost', (event) => {
+      event.preventDefault();
+      this.contextLost = true;
+      if (this.started && !this.paused && !this.checkpoints.runFinished) {
+        this.setPaused(true);
+      }
+      showWebglFallback(
+        'Graphics Context Paused',
+        '3D Context Lost',
+        'Your browser paused WebGL graphics (often after switching apps or low GPU memory). Wait a moment for automatic recovery or reload the page.',
+      );
+    });
+    this.renderer.domElement.addEventListener('webglcontextrestored', () => {
+      this.contextLost = false;
+      hideWebglFallback();
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.goatCam.resize(window.innerWidth, window.innerHeight);
+      this.lastFrameTime = performance.now();
+      this.accumulator = 0;
+      requestAnimationFrame(this.loop);
+    });
+
     this.updateOrientationGuard();
 
     // Render initial dramatic view perched atop The Goat Spire right away
@@ -679,6 +704,7 @@ class ApexGoatGame {
   }
 
   private loop = (now: number): void => {
+    if (this.contextLost) return;
     requestAnimationFrame(this.loop);
 
     const frameDt = Math.min(0.05, Math.max(0.0001, (now - this.lastFrameTime) / 1000));
@@ -1141,4 +1167,44 @@ class ApexGoatGame {
   };
 }
 
-export const game = new ApexGoatGame();
+let fallbackReloadBound = false;
+
+function showWebglFallback(kicker: string, title: string, desc: string): void {
+  const overlay = document.getElementById('webgl-fallback');
+  if (!overlay) return;
+  const kickerEl = document.getElementById('webgl-fallback-kicker');
+  const titleEl = document.getElementById('webgl-fallback-title');
+  const descEl = document.getElementById('webgl-fallback-desc');
+  if (kickerEl) kickerEl.textContent = kicker;
+  if (titleEl) titleEl.textContent = title;
+  if (descEl) descEl.textContent = desc;
+  if (!fallbackReloadBound) {
+    fallbackReloadBound = true;
+    document.getElementById('webgl-fallback-reload')?.addEventListener('click', () => {
+      window.location.reload();
+    });
+  }
+  overlay.classList.remove('hidden');
+}
+
+function hideWebglFallback(): void {
+  document.getElementById('webgl-fallback')?.classList.add('hidden');
+}
+
+function bootGame(): ApexGoatGame | null {
+  try {
+    return new ApexGoatGame();
+  } catch (error) {
+    console.error('Failed to initialize APEX GOAT WebGL renderer:', error);
+    document.getElementById('start-overlay')?.classList.add('hidden');
+    document.getElementById('hud')?.classList.add('hidden');
+    showWebglFallback(
+      'Graphics Unavailable',
+      'WebGL Required',
+      'APEX GOAT needs WebGL hardware graphics to render the 3D alpine course. Enable hardware acceleration in your browser settings or try a modern browser.',
+    );
+    return null;
+  }
+}
+
+export const game: ApexGoatGame | null = bootGame();
