@@ -376,27 +376,35 @@ class ApexGoatGame {
     });
 
     startBtn.addEventListener('click', () => {
+      if (this.started) return;
       startBtn.blur();
       this.beginGame();
     });
-    resumeBtn.addEventListener('click', () => this.setPaused(false));
+    resumeBtn.addEventListener('click', () => {
+      if (!this.paused) return;
+      this.setPaused(false);
+    });
     pauseRestartBtn.addEventListener('click', () => {
+      if (!this.paused) return;
       trackEvent('run/restart', 'Run Restart');
       this.setPaused(false);
       this.resetRun();
       this.hud.showBanner('RESTART', 'GO!', 650);
     });
     pauseCamBtn.addEventListener('click', () => {
+      if (!this.paused) return;
       const mode = this.goatCam.toggleMode(this.rig);
       this.hud.setCameraMode(mode);
       this.syncStartCamPills(mode);
       trackEventOnce(`camera/${mode}`, `Camera: ${mode}`);
     });
     pauseAudioBtn?.addEventListener('click', () => {
+      if (!this.paused) return;
       this.toggleAudioMute();
       pauseAudioBtn.blur();
     });
     pauseSceneBtn?.addEventListener('click', () => {
+      if (!this.paused) return;
       this.cycleScenePreset();
       pauseSceneBtn.blur();
     });
@@ -435,6 +443,7 @@ class ApexGoatGame {
       controlsHintClose.blur();
     });
     finishRetryBtn.addEventListener('click', () => {
+      if (!this.checkpoints.runFinished) return;
       trackEvent('run/retry', 'Run Retry');
       this.resetRun();
       this.hud.showBanner('RACE YOUR GHOST!', 'GO!', 850);

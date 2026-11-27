@@ -847,14 +847,24 @@
         pointer-events: none;
         z-index: 15;
         opacity: 0;
-        transition: opacity 0.35s ease;
+        visibility: hidden;
+        transition:
+          opacity 0.35s ease,
+          visibility 0s linear 0.35s;
       }
       #onboarding-pointers.visible {
         opacity: 1;
+        visibility: visible;
+        transition: opacity 0.35s ease;
       }
       #onboarding-pointers.suspended {
         opacity: 0;
+        visibility: hidden;
         pointer-events: none;
+      }
+      #onboarding-pointers:not(.visible) *,
+      #onboarding-pointers.suspended * {
+        pointer-events: none !important;
       }
       .pointer-callout {
         position: absolute;
@@ -1177,11 +1187,16 @@
         align-items: center;
         justify-content: center;
         z-index: 20;
+        visibility: visible;
         transition: opacity 0.25s ease;
       }
       #start-overlay.hidden {
         opacity: 0;
+        visibility: hidden;
         pointer-events: none;
+        transition:
+          opacity 0.25s ease,
+          visibility 0s linear 0.25s;
       }
       .modal-card {
         max-width: 500px;
@@ -1189,6 +1204,7 @@
         max-height: calc(100dvh - 28px);
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
         background: linear-gradient(165deg, rgba(16, 26, 42, 0.56), rgba(10, 16, 28, 0.66));
         backdrop-filter: blur(18px) saturate(145%);
         -webkit-backdrop-filter: blur(18px) saturate(145%);
@@ -1256,6 +1272,7 @@
       .seg-pill {
         pointer-events: auto;
         cursor: pointer;
+        touch-action: manipulation;
         display: inline-flex;
         align-items: center;
         gap: 5px;
@@ -1310,6 +1327,7 @@
         width: 100%;
         pointer-events: auto;
         cursor: pointer;
+        touch-action: manipulation;
         border: none;
         border-radius: 12px;
         padding: 13px 24px;
@@ -1331,6 +1349,7 @@
       .secondary-btn {
         pointer-events: auto;
         cursor: pointer;
+        touch-action: manipulation;
         border: 1px solid rgba(255, 255, 255, 0.22);
         border-radius: 11px;
         padding: 10px 14px;
@@ -1455,12 +1474,24 @@
         align-items: center;
         justify-content: center;
         z-index: 25;
+        visibility: visible;
         transition: opacity 0.16s ease;
       }
       #pause-overlay.hidden,
       #finish-overlay.hidden {
         opacity: 0;
+        visibility: hidden;
         pointer-events: none;
+        transition:
+          opacity 0.16s ease,
+          visibility 0s linear 0.16s;
+      }
+      /* Prevent children with pointer-events: auto from intercepting taps while an overlay is hidden */
+      #start-overlay.hidden *,
+      #pause-overlay.hidden *,
+      #finish-overlay.hidden *,
+      #rotate-overlay.hidden * {
+        pointer-events: none !important;
       }
       #finish-overlay {
         position: fixed;
@@ -1472,6 +1503,7 @@
         justify-content: center;
         padding: 0 16px 28px;
         z-index: 24;
+        visibility: visible;
         transition: opacity 0.25s ease;
       }
       .finish-card {
@@ -1529,7 +1561,7 @@
         position: fixed;
         bottom: 6px;
         left: 10px;
-        z-index: 40;
+        z-index: 18;
         pointer-events: auto;
         cursor: pointer;
         border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1877,11 +1909,16 @@
         justify-content: center;
         padding: 20px;
         text-align: center;
+        visibility: visible;
         transition: opacity 0.2s ease;
       }
       #rotate-overlay.hidden {
         opacity: 0;
+        visibility: hidden;
         pointer-events: none;
+        transition:
+          opacity 0.2s ease,
+          visibility 0s linear 0.2s;
       }
       .rotate-card {
         max-width: 340px;
@@ -2085,18 +2122,30 @@
           font-size: 12px;
         }
         .modal-card {
-          padding: 20px 18px;
+          padding: 16px 16px;
           border-radius: 18px;
         }
         .modal-title {
-          font-size: 28px;
+          font-size: 26px;
         }
         .modal-desc {
-          font-size: 13px;
+          font-size: 12.5px;
+          margin-top: 6px;
+        }
+        .start-selectors {
+          margin-top: 10px;
+          gap: 7px;
+        }
+        .selector-row {
+          padding: 6px 9px;
         }
         .modal-tips {
-          font-size: 12px;
-          padding: 10px 12px;
+          margin-top: 10px;
+          font-size: 11.5px;
+          padding: 9px 11px;
+        }
+        .play-btn {
+          margin-top: 12px;
         }
         .pause-medals-mobile {
           display: flex;

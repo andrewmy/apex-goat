@@ -127,7 +127,11 @@ export class TouchControls {
       if (e.pointerType === 'touch') this.markTouchUsed();
 
       this.stickPointerId = e.pointerId;
-      zone.setPointerCapture(e.pointerId);
+      try {
+        zone.setPointerCapture(e.pointerId);
+      } catch {
+        // Ignore capture errors on synthetic/unsupported pointers
+      }
 
       const rect = zone.getBoundingClientRect();
       const pad = 42;
@@ -201,7 +205,11 @@ export class TouchControls {
       this.pumpStartX = e.clientX;
       this.pumpAirSpin = 0;
       this.pumpHeld = true;
-      btn.setPointerCapture(e.pointerId);
+      try {
+        btn.setPointerCapture(e.pointerId);
+      } catch {
+        // Ignore capture errors on synthetic/unsupported pointers
+      }
       btn.classList.add('pressed');
     });
 
@@ -247,7 +255,11 @@ export class TouchControls {
       this.leapPointerId = e.pointerId;
       this.leapHeld = true;
       this.pending.jumpPressed = true;
-      btn.setPointerCapture(e.pointerId);
+      try {
+        btn.setPointerCapture(e.pointerId);
+      } catch {
+        // Ignore capture errors on synthetic/unsupported pointers
+      }
       btn.classList.add('pressed');
     });
 
