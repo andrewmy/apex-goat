@@ -224,6 +224,7 @@ class ApexGoatGame {
     // Render initial dramatic view perched atop The Goat Spire right away
     this.resetRun();
     this.loop(performance.now());
+    hideBootLoader();
   }
 
   private updateTouchControlsVisibility(): void {
@@ -1191,11 +1192,19 @@ function hideWebglFallback(): void {
   document.getElementById('webgl-fallback')?.classList.add('hidden');
 }
 
+function hideBootLoader(): void {
+  const loader = document.getElementById('boot-loader');
+  if (!loader || loader.classList.contains('hidden')) return;
+  loader.classList.add('hidden');
+  window.setTimeout(() => loader.remove(), 350);
+}
+
 function bootGame(): ApexGoatGame | null {
   try {
     return new ApexGoatGame();
   } catch (error) {
     console.error('Failed to initialize APEX GOAT WebGL renderer:', error);
+    hideBootLoader();
     document.getElementById('start-overlay')?.classList.add('hidden');
     document.getElementById('hud')?.classList.add('hidden');
     showWebglFallback(
