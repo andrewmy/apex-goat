@@ -41,6 +41,7 @@ jobs:
       - name: Build
         env:
           VITE_BASE: ${{ steps.pages.outputs.base_path }}/
+          VITE_SITE_URL: ${{ steps.pages.outputs.base_url }}
           VITE_GOATCOUNTER_URL: ${{ vars.GOATCOUNTER_URL }}
         run: npm run build
 

@@ -85,6 +85,24 @@ function goatCounterPlugin(endpoint: string | null): Plugin {
   };
 }
 
+const DEFAULT_SITE_URL = 'https://andrewmy.github.io/apex-goat/';
+
+function normalizeSiteUrl(raw?: string): string | null {
+  const trimmed = raw?.trim();
+  if (!trimmed) return null;
+  return trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
+}
+
+function socialCardUrlPlugin(siteUrl: string | null): Plugin {
+  return {
+    name: 'goat-social-card-url',
+    transformIndexHtml(html) {
+      if (!siteUrl || siteUrl === DEFAULT_SITE_URL) return html;
+      return html.replaceAll(DEFAULT_SITE_URL, siteUrl);
+    },
+  };
+}
+
 function normalizeBase(base?: string): string {
   if (!base) return './';
   const trimmed = base.replace(/^\/+|\/+$/g, '');
@@ -94,10 +112,15 @@ function normalizeBase(base?: string): string {
 export default defineConfig(({ command }) => {
   const goatCounterEndpoint =
     command === 'build' ? normalizeGoatCounterEndpoint(process.env.VITE_GOATCOUNTER_URL) : null;
+  const siteUrl = command === 'build' ? normalizeSiteUrl(process.env.VITE_SITE_URL) : null;
 
   return {
     base: command === 'serve' ? '/' : normalizeBase(process.env.VITE_BASE),
-    plugins: [buildTrackerPlugin(), goatCounterPlugin(goatCounterEndpoint)],
+    plugins: [
+      buildTrackerPlugin(),
+      goatCounterPlugin(goatCounterEndpoint),
+      socialCardUrlPlugin(siteUrl),
+    ],
     server: {
       host: true,
       port: 5173,
